@@ -466,7 +466,7 @@
   <div id="loading-msg" class="loading-msg hidden">Fetching champion list from Riot…</div>
 
   <!-- Champion section -->
-  <div id="champion-section" class="">
+  <div id="champion-section" class="hidden">
 
     <div class="champ-card">
       <div class="champ-header">
@@ -4701,6 +4701,18 @@ function esc(s) { return s.replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 // ─────────────────────────────────────────────────────────
 // START
 // ─────────────────────────────────────────────────────────
+
+// If browser restores page from bfcache (back/forward), reset champion state
+// so the user always starts fresh on a new visit/refresh.
+window.addEventListener('pageshow', e => {
+  if (e.persisted) {
+    S.champ = null;
+    document.getElementById('champion-section').classList.add('hidden');
+    document.getElementById('search-input').value = '';
+    document.getElementById('loading-msg').classList.add('hidden');
+  }
+});
+
 init();
 </script>
 
