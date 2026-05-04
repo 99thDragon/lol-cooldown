@@ -449,7 +449,7 @@
       <option value="Kayle">Kayle (Mid)</option>
     </select>
     <span class="main-hint" id="main-hint">Kayle (Mid) guide will appear below when you search an opponent</span>
-    <button class="save-file-btn saving" onclick="exportToFile()" title="Bake all your edits into the HTML file so anyone you share it with sees them">⏳ Saving…</button>
+    <button class="save-file-btn saving" onclick="exportToFile()" title="Bake all your edits into the HTML file so anyone you share it with sees them" id="save-file-btn">⏳ Saving…</button>
   </div>
 
   <!-- Search -->
@@ -3541,6 +3541,12 @@ const SAVED_BUILDS = {
 
 // Cache the raw HTML at page-load time (best quality copy).
 // Falls back to document.documentElement.outerHTML so export NEVER needs the server.
+// Hide Save to File button when hosted online (only useful locally)
+if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && location.protocol !== 'file:') {
+  const sfb = document.getElementById('save-file-btn');
+  if (sfb) sfb.style.display = 'none';
+}
+
 let _cachedHtml = null;
 (async function _cacheHtml() {
   try {
