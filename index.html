@@ -3704,7 +3704,7 @@ searchEl.addEventListener('keydown', e => {
   const items = [...dropEl.querySelectorAll('.dropdown-item')];
   if (e.key === 'ArrowDown')  { e.preventDefault(); dropIdx = Math.min(dropIdx+1, items.length-1); highlightDrop(items); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); dropIdx = Math.max(dropIdx-1, 0); highlightDrop(items); }
-  else if (e.key === 'Enter')  { if (items[dropIdx]) items[dropIdx].click(); }
+  else if (e.key === 'Enter')  { if (items[dropIdx]) items[dropIdx].click(); else if (items.length === 1) items[0].click(); }
   else if (e.key === 'Escape') hideDrop();
 });
 
