@@ -1,0 +1,4701 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoL Cooldown Calculator</title>
+  <style>
+    :root {
+      --bg: #050A14;
+      --surface: #0A1428;
+      --surface2: #0E1E3C;
+      --border: #1E3557;
+      --gold: #C89B3C;
+      --gold-light: #F0E6D3;
+      --text: #A3B4C3;
+      --text-dim: #4A6280;
+      --blue: #3DB8F5;
+      --blue-dim: #1A4A6E;
+      --green: #3DCC5C;
+      --green-dim: #0D3020;
+      --orange: #F07840;
+      --orange-dim: #3A1E0A;
+      --red: #E84057;
+      --red-dim: #3A0D18;
+      --yellow: #F0C040;
+      --yellow-dim: #3A2E08;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(180deg, #0D1A35 0%, #050A14 100%);
+      border-bottom: 2px solid var(--gold);
+      padding: 14px 24px;
+      text-align: center;
+    }
+    .header h1 { color: var(--gold); font-size: 1.3rem; letter-spacing: 4px; text-transform: uppercase; font-weight: 700; }
+    .header p { color: var(--text-dim); font-size: 0.75rem; margin-top: 3px; letter-spacing: 1px; }
+
+    /* ── Container ── */
+    .container { max-width: 820px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    /* ── Main Selector Bar ── */
+    .main-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .main-label { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px; white-space: nowrap; }
+    .main-portrait-wrap { position: relative; flex-shrink: 0; }
+    .main-portrait { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--gold); display: block; }
+    .main-portrait.hidden-img { display: none; }
+    .main-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--gold-light);
+      padding: 6px 12px;
+      border-radius: 3px;
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .main-select:focus { border-color: var(--gold); }
+    .main-select option { background: #0A1428; }
+    .main-hint { color: var(--text-dim); font-size: 0.72rem; margin-left: auto; }
+    .save-file-btn {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 3px;
+      color: var(--gold); font-size: 0.72rem; padding: 4px 10px; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s; white-space: nowrap; font-family: inherit;
+    }
+    .save-file-btn:hover { border-color: var(--gold); background: #162030; }
+    .save-file-btn.saving { opacity: 0.6; cursor: default; }
+
+    /* ── Search ── */
+    .search-wrapper { position: relative; margin-bottom: 20px; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 1.1rem; pointer-events: none; color: var(--text-dim); }
+    .search-input {
+      width: 100%; padding: 14px 16px 14px 46px;
+      background: var(--surface); border: 2px solid var(--border); border-radius: 4px;
+      color: var(--gold-light); font-size: 1.1rem; outline: none; transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--gold); }
+    .search-input::placeholder { color: var(--text-dim); }
+    .search-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .search-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+      max-height: 320px; overflow-y: auto; z-index: 200;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+    }
+    .search-dropdown.hidden { display: none; }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      cursor: pointer; border-bottom: 1px solid rgba(30,53,87,0.4); transition: background 0.1s;
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover, .dropdown-item.active { background: var(--surface2); }
+    .dropdown-item img { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
+    .dropdown-item span { color: var(--gold-light); font-size: 0.95rem; }
+
+    /* ── Error / Loading ── */
+    .error-banner { background: rgba(232,64,87,0.1); border: 1px solid var(--red); color: var(--red); padding: 10px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 0.9rem; }
+    .loading-msg { text-align: center; padding: 40px; color: var(--text-dim); font-size: 0.9rem; letter-spacing: 1px; }
+    .hidden { display: none !important; }
+
+    /* ── Champion Header Card ── */
+    .champ-card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 14px; overflow: hidden; }
+    .champ-header { display: flex; align-items: center; gap: 16px; padding: 16px; background: linear-gradient(90deg, #0E1E3C 0%, var(--surface) 100%); }
+    .champ-portrait { width: 80px; height: 80px; border-radius: 4px; border: 2px solid var(--gold); flex-shrink: 0; }
+    .champ-info h2 { color: var(--gold-light); font-size: 1.6rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+    .champ-title { color: var(--gold); font-size: 0.82rem; font-style: italic; margin-top: 2px; }
+    .skill-priority { color: var(--text-dim); font-size: 0.78rem; margin-top: 6px; letter-spacing: 0.5px; }
+    .skill-priority span { color: var(--text); font-weight: 600; }
+
+    /* ── Controls Panel ── */
+    .controls { display: flex; gap: 20px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-end; }
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    .control-label { color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; }
+    .control-row { display: flex; align-items: center; gap: 8px; }
+    .btn { width: 34px; height: 34px; background: var(--surface2); border: 1px solid var(--border); color: var(--gold); font-size: 1.3rem; line-height: 1; cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center; transition: background 0.12s, color 0.12s; user-select: none; flex-shrink: 0; }
+    .btn:hover { background: var(--border); }
+    .btn:active { background: var(--gold); color: var(--bg); }
+    .level-value { font-size: 1.6rem; font-weight: 700; color: var(--gold-light); min-width: 44px; text-align: center; }
+    .haste-input { width: 80px; padding: 6px 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--gold-light); font-size: 1.3rem; font-weight: 700; border-radius: 3px; outline: none; text-align: center; transition: border-color 0.2s; }
+    .haste-input:focus { border-color: var(--gold); }
+    .cdr-badge { background: var(--blue-dim); border: 1px solid var(--blue); color: var(--blue); font-size: 0.9rem; font-weight: 700; padding: 4px 10px; border-radius: 3px; white-space: nowrap; }
+    .cdr-badge.zero { background: var(--surface2); border-color: var(--border); color: var(--text-dim); }
+    .reset-btn { background: rgba(200,155,60,0.1); border: 1px solid var(--gold); color: var(--gold); font-size: 0.75rem; padding: 5px 10px; border-radius: 3px; cursor: pointer; letter-spacing: 0.5px; transition: background 0.15s; height: 34px; }
+    .reset-btn:hover { background: rgba(200,155,60,0.2); }
+
+    /* ── Abilities Grid ── */
+    .abilities-grid { display: flex; flex-direction: column; gap: 8px; }
+    .ability-card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; display: flex; align-items: center; gap: 14px; transition: border-color 0.15s; }
+    .ability-card:hover { border-color: rgba(200,155,60,0.4); }
+    .ability-card.unleveled { opacity: 0.55; }
+    .ability-icon-wrap { position: relative; flex-shrink: 0; }
+    .ability-icon { width: 56px; height: 56px; border-radius: 4px; border: 1px solid var(--border); display: block; }
+    .key-badge { position: absolute; top: -7px; left: -7px; background: var(--bg); border: 1px solid var(--border); color: var(--gold); font-size: 0.72rem; font-weight: 800; padding: 1px 5px; border-radius: 2px; letter-spacing: 0.5px; }
+    .ability-content { flex: 1; min-width: 0; }
+    .ability-name { color: var(--gold-light); font-size: 0.98rem; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .level-dots { display: flex; gap: 4px; margin-bottom: 6px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); transition: background 0.15s; }
+    .dot.filled { background: var(--gold); }
+    .cd-ranks { display: flex; gap: 2px; flex-wrap: wrap; align-items: center; }
+    .cd-rank { font-size: 0.8rem; color: var(--text-dim); padding: 1px 5px; border-radius: 2px; white-space: nowrap; }
+    .cd-rank.current { background: rgba(200,155,60,0.15); color: var(--gold); font-weight: 700; font-size: 0.88rem; border: 1px solid rgba(200,155,60,0.3); }
+    .cd-rank.current.with-haste { background: rgba(61,184,245,0.12); color: var(--blue); border-color: rgba(61,184,245,0.3); }
+    .cd-arrow { color: var(--text-dim); font-size: 0.65rem; }
+    .passive-note { color: var(--text-dim); font-size: 0.82rem; font-style: italic; }
+    .not-leveled-note { color: var(--text-dim); font-size: 0.82rem; }
+    .ability-level-ctl { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .ability-btn { width: 26px; height: 26px; background: var(--surface2); border: 1px solid var(--border); color: var(--gold); font-size: 1rem; cursor: pointer; border-radius: 2px; display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+    .ability-btn:hover { background: var(--border); }
+    .ability-btn:active { background: var(--gold); color: var(--bg); }
+    .ability-lv-badge { font-size: 0.8rem; font-weight: 700; color: var(--gold-light); min-width: 28px; text-align: center; }
+
+    /* ── Guide Panel ── */
+    .guide-panel {
+      margin-top: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .guide-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: linear-gradient(90deg, #0E1E3C 0%, var(--surface) 100%);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .guide-header-left { display: flex; align-items: center; gap: 10px; }
+    .guide-main-icon { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gold); }
+    .guide-header-title { color: var(--gold); font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .guide-header-sub { color: var(--text-dim); font-size: 0.72rem; margin-top: 1px; }
+    .guide-toggle-btn { color: var(--text-dim); font-size: 1rem; transition: transform 0.2s; }
+    .guide-toggle-btn.collapsed { transform: rotate(-90deg); }
+
+    .guide-body { padding: 16px; }
+
+    /* Difficulty */
+    .diff-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .diff-label { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+    .diff-bar { display: flex; gap: 3px; }
+    .diff-seg { width: 22px; height: 10px; border-radius: 2px; background: var(--border); }
+    .diff-seg.filled-easy   { background: var(--green); }
+    .diff-seg.filled-even   { background: var(--yellow); }
+    .diff-seg.filled-hard   { background: var(--orange); }
+    .diff-seg.filled-vhard  { background: var(--red); }
+    .diff-badge {
+      font-size: 0.78rem; font-weight: 700; padding: 2px 10px; border-radius: 3px; letter-spacing: 0.5px;
+    }
+    .diff-badge.easy  { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green); }
+    .diff-badge.even  { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+    .diff-badge.hard  { background: var(--orange-dim); color: var(--orange); border: 1px solid var(--orange); }
+    .diff-badge.vhard { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red); }
+    .diff-badge.prog  { background: var(--surface2);   color: var(--text-dim); border: 1px solid var(--border); }
+    .diff-number { color: var(--text-dim); font-size: 0.78rem; }
+
+    /* Guide sections */
+    .guide-sections { display: flex; flex-direction: column; gap: 14px; }
+    .guide-section-title {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--gold); font-weight: 700; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .guide-section-title::before { content: ''; display: block; width: 3px; height: 12px; background: var(--gold); border-radius: 2px; }
+    .guide-section-content {
+      color: var(--text); font-size: 0.88rem; line-height: 1.65;
+      background: var(--surface2); border-radius: 3px; padding: 10px 12px;
+      border-left: 2px solid var(--border);
+    }
+    .guide-section-content.avoid-content { border-left-color: var(--red); }
+    .guide-section-content ul { list-style: none; padding: 0; }
+    .guide-section-content li { padding: 2px 0 2px 16px; position: relative; }
+    .guide-section-content li::before { content: '›'; position: absolute; left: 0; color: var(--gold); font-weight: 700; }
+    .guide-section-content.avoid-content li::before { color: var(--red); }
+
+    /* Video links */
+    .video-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+    .video-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(232,64,87,0.1); border: 1px solid var(--red); color: var(--red);
+      padding: 5px 12px; border-radius: 3px; font-size: 0.8rem; font-weight: 600;
+      text-decoration: none; transition: background 0.15s; cursor: pointer;
+    }
+    .video-btn:hover { background: rgba(232,64,87,0.2); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+    /* ── Runes / Spells / Build ── */
+    .build-block { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px;
+      background: var(--surface2); border-radius: 4px; padding: 10px 12px;
+      border: 1px solid var(--border); }
+    .build-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .build-label {
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.2px;
+      color: var(--text-dim); white-space: nowrap; min-width: 54px; text-align: right;
+      padding-right: 6px; border-right: 1px solid var(--border);
+    }
+    .build-icons { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .bi {
+      width: 28px; height: 28px; border-radius: 3px;
+      border: 1px solid var(--border); object-fit: cover;
+      transition: border-color 0.15s; cursor: default;
+    }
+    .bi:hover { border-color: var(--gold); }
+    .bi.keystone { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--gold); }
+    .bi.rune-sm  { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #2a3a5a; }
+    .bi.summ     { width: 30px; height: 30px; border-radius: 4px; border: 1px solid var(--blue); }
+    .bi.item     { border-radius: 4px; }
+    .b-arrow { color: var(--text-dim); font-size: 0.75rem; line-height: 1; }
+    .b-or    { color: var(--text-dim); font-size: 0.7rem; font-style: italic; }
+    .b-plus  { color: var(--text-dim); font-size: 0.75rem; }
+    .b-divider { width: 1px; height: 22px; background: var(--border); margin: 0 5px; }
+    .b-note  { font-size: 0.7rem; color: var(--blue); font-weight: 600; letter-spacing: 0.3px; }
+    .b-warn  { font-size: 0.7rem; color: var(--orange); font-weight: 600; }
+    /* tooltip on hover */
+    .bw { position: relative; display: inline-flex; }
+    .bw::after {
+      content: attr(data-tip); position: absolute; bottom: calc(100% + 5px); left: 50%;
+      transform: translateX(-50%); background: #0A1428; border: 1px solid var(--gold);
+      color: var(--gold-light); font-size: 0.7rem; white-space: nowrap;
+      padding: 3px 8px; border-radius: 3px; pointer-events: none;
+      z-index: 200; opacity: 0; transition: opacity 0.1s;
+    }
+    .bw:hover::after { opacity: 1; }
+
+    /* ── Build edit mode ── */
+    .build-block-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+    .build-edit-btn { background:none; border:1px solid var(--border); border-radius:3px; color:var(--text-dim); font-size:0.6rem; letter-spacing:.5px; text-transform:uppercase; padding:2px 8px; cursor:pointer; transition:border-color .15s,color .15s; }
+    .build-edit-btn:hover,.build-edit-btn.active { border-color:var(--gold); color:var(--gold); }
+    .edit-actions { display:flex; gap:6px; margin-top:6px; padding-top:6px; border-top:1px solid var(--border); }
+    .ea-btn { border:none; border-radius:3px; font-size:0.7rem; font-weight:700; padding:4px 12px; cursor:pointer; font-family:inherit; }
+    .ea-save   { background:var(--gold); color:#0A1428; }
+    .ea-cancel { background:transparent; border:1px solid var(--border); color:var(--text-dim); }
+    .ea-reset  { background:transparent; border:1px solid #c0392b; color:#c0392b; margin-left:auto; font-size:0.65rem; }
+    .pick-row  { display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:2px 0; }
+    .pick-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:.8px; color:var(--text-dim); white-space:nowrap; min-width:54px; text-align:right; padding-right:6px; border-right:1px solid var(--border); }
+    .pick-opt  { display:inline-flex; align-items:center; gap:3px; padding:3px 6px 3px 4px; border-radius:3px; border:1px solid var(--border); cursor:pointer; background:var(--surface); transition:border-color .12s,background .12s; user-select:none; }
+    .pick-opt:hover { border-color:var(--gold); }
+    .pick-opt.sel   { border-color:var(--gold); background:#162030; }
+    .pick-opt img   { width:22px; height:22px; border-radius:3px; object-fit:cover; }
+    .pick-opt span  { font-size:0.6rem; color:var(--text-dim); }
+    .pick-opt.sel span { color:var(--gold-light); }
+    .pick-sep { color:var(--text-dim); font-size:0.75rem; margin:0 2px; }
+    .has-override .guide-section-title::after { content:' ✎'; font-size:0.6rem; color:var(--gold); opacity:.7; }
+
+    /* ── Full Build Editor ── */
+    /* Rune tree picker */
+    .be-section { margin-bottom: 10px; }
+    .be-section-label { font-size:0.62rem; text-transform:uppercase; letter-spacing:1.2px; color:var(--gold); font-weight:700; margin-bottom:5px; }
+    .be-tree-row { display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-bottom:5px; }
+    .be-tree-btn {
+      width:36px; height:36px; border-radius:50%; border:2px solid var(--border);
+      background:var(--surface); cursor:pointer; padding:2px; transition:border-color .15s, opacity .15s;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .be-tree-btn img { width:28px; height:28px; border-radius:50%; object-fit:cover; }
+    .be-tree-btn.sel { border-color:var(--gold); box-shadow:0 0 6px rgba(200,155,60,0.4); }
+    .be-tree-btn.dim { opacity:0.35; }
+    .be-tree-btn:hover:not(.dim) { border-color:var(--gold); opacity:1; }
+    .be-tree-name { font-size:0.72rem; color:var(--text-dim); margin-left:4px; }
+    .be-rune-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:4px; }
+    .be-rune-btn {
+      position:relative; width:34px; height:34px; border-radius:50%;
+      border:2px solid var(--border); background:var(--surface2);
+      cursor:pointer; padding:2px; transition:border-color .15s, opacity .15s;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .be-rune-btn img { width:26px; height:26px; border-radius:50%; object-fit:cover; }
+    .be-rune-btn.keystone { width:40px; height:40px; }
+    .be-rune-btn.keystone img { width:32px; height:32px; }
+    .be-rune-btn.sel { border-color:var(--gold); box-shadow:0 0 5px rgba(200,155,60,0.35); }
+    .be-rune-btn.sel2 { border-color:var(--blue); box-shadow:0 0 5px rgba(61,184,245,0.3); }
+    .be-rune-btn.dim { opacity:0.3; }
+    .be-rune-btn:hover:not(.dim) { border-color:var(--gold); opacity:1; }
+    .be-rune-name { font-size:0.58rem; color:var(--text-dim); text-align:center; max-width:36px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .be-rune-wrap { display:flex; flex-direction:column; align-items:center; gap:2px; }
+    .be-sep { width:100%; height:1px; background:var(--border); margin:6px 0; }
+    /* Shard grid */
+    .be-shard-row { display:flex; gap:5px; margin-bottom:3px; }
+    .be-shard-btn {
+      width:28px; height:28px; border-radius:4px; border:2px solid var(--border);
+      background:var(--surface2); cursor:pointer; padding:2px;
+      transition:border-color .15s; display:flex; align-items:center; justify-content:center;
+    }
+    .be-shard-btn img { width:20px; height:20px; object-fit:cover; }
+    .be-shard-btn.sel { border-color:var(--gold); }
+    .be-shard-btn:hover { border-color:var(--gold); }
+    /* Spell picker grid */
+    .be-spell-grid { display:flex; gap:6px; flex-wrap:wrap; }
+    .be-spell-btn {
+      position:relative; width:38px; height:38px; border-radius:6px;
+      border:2px solid var(--border); background:var(--surface2);
+      cursor:pointer; padding:1px; transition:border-color .15s;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .be-spell-btn img { width:32px; height:32px; border-radius:4px; object-fit:cover; }
+    .be-spell-btn.sel1 { border-color:var(--gold); }
+    .be-spell-btn.sel2 { border-color:var(--blue); }
+    .be-spell-btn:hover { border-color:var(--gold); opacity:0.9; }
+    .be-spell-badge {
+      position:absolute; top:-5px; right:-5px; width:14px; height:14px;
+      border-radius:50%; font-size:0.55rem; font-weight:700; display:flex;
+      align-items:center; justify-content:center; pointer-events:none;
+    }
+    .be-spell-badge.b1 { background:var(--gold); color:#0A1428; }
+    .be-spell-badge.b2 { background:var(--blue); color:#0A1428; }
+    /* Item phase editor */
+    .be-phase { margin-bottom:8px; }
+    .be-phase-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); margin-bottom:4px; display:flex; align-items:center; gap:6px; }
+    .be-item-row { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+    .be-item-slot {
+      position:relative; width:34px; height:34px; border-radius:4px;
+      border:2px solid var(--border); background:var(--surface2);
+      cursor:pointer; transition:border-color .15s;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .be-item-slot img { width:30px; height:30px; border-radius:3px; object-fit:cover; }
+    .be-item-slot.active { border-color:var(--gold); box-shadow:0 0 6px rgba(200,155,60,0.4); }
+    .be-item-slot:hover { border-color:rgba(200,155,60,0.6); }
+    .be-item-x {
+      position:absolute; top:-5px; right:-5px; width:14px; height:14px; border-radius:50%;
+      background:var(--red); color:#fff; font-size:0.6rem; font-weight:700;
+      display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:5;
+      line-height:1;
+    }
+    .be-item-add {
+      width:28px; height:28px; border-radius:4px; border:1px dashed var(--border);
+      background:none; color:var(--text-dim); font-size:1.1rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; transition:border-color .15s, color .15s;
+    }
+    .be-item-add:hover { border-color:var(--gold); color:var(--gold); }
+    /* Item picker panel */
+    .be-item-picker {
+      background:var(--bg); border:1px solid var(--border); border-radius:4px;
+      padding:8px; margin-top:6px;
+    }
+    .be-picker-search {
+      width:100%; padding:5px 8px; background:var(--surface2); border:1px solid var(--border);
+      color:var(--gold-light); font-size:0.82rem; border-radius:3px; outline:none; margin-bottom:6px;
+    }
+    .be-picker-search:focus { border-color:var(--gold); }
+    .be-picker-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:6px; }
+    .be-tab-btn {
+      background:var(--surface2); border:1px solid var(--border); color:var(--text-dim);
+      font-size:0.62rem; padding:2px 7px; border-radius:3px; cursor:pointer; transition:border-color .1s,color .1s;
+    }
+    .be-tab-btn.sel { border-color:var(--gold); color:var(--gold); }
+    .be-tab-btn:hover { border-color:var(--gold); color:var(--gold); }
+    .be-picker-grid {
+      display:flex; flex-wrap:wrap; gap:4px; max-height:160px; overflow-y:auto;
+    }
+    .be-pick-item {
+      width:32px; height:32px; border-radius:4px; border:1px solid var(--border);
+      cursor:pointer; object-fit:cover; transition:border-color .1s;
+    }
+    .be-pick-item:hover { border-color:var(--gold); transform:scale(1.1); }
+    /* View mode rune/spell compact */
+    .bv-tree { width:22px; height:22px; border-radius:50%; border:1px solid var(--border); object-fit:cover; }
+
+    @media (max-width: 520px) {
+      .champ-header { flex-direction: column; text-align: center; }
+      .controls { flex-direction: column; }
+      .ability-card { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚔ LoL Cooldown Calculator</h1>
+  <p>Quick ability cooldown lookup before your game</p>
+</div>
+
+<div class="container">
+  <div id="error-banner" class="error-banner hidden"></div>
+
+  <!-- Your Main selector -->
+  <div class="main-bar">
+    <span class="main-label">Your Main:</span>
+    <img id="main-portrait" class="main-portrait" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/champion/Kayle.png" alt="">
+    <select id="main-select" class="main-select">
+      <option value="">— Select champion —</option>
+      <option value="Kayle">Kayle (Mid)</option>
+    </select>
+    <span class="main-hint" id="main-hint">Kayle (Mid) guide will appear below when you search an opponent</span>
+    <button class="save-file-btn saving" onclick="exportToFile()" title="Bake all your edits into the HTML file so anyone you share it with sees them">⏳ Saving…</button>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrapper">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" class="search-input" placeholder="Search for a champion…" autocomplete="off">
+    <div id="search-dropdown" class="search-dropdown hidden">
+    <div class="dropdown-item" data-id="Yasuo" data-name="Yasuo">
+      <img src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/champion/Yasuo.png" loading="lazy" alt="">
+      <span>Yasuo</span>
+    </div></div>
+  </div>
+
+  <div id="loading-msg" class="loading-msg hidden">Fetching champion list from Riot…</div>
+
+  <!-- Champion section -->
+  <div id="champion-section" class="">
+
+    <div class="champ-card">
+      <div class="champ-header">
+        <img id="champ-portrait" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/champion/Yasuo.png" alt="" class="champ-portrait">
+        <div class="champ-info">
+          <h2 id="champ-name">Yasuo</h2>
+          <div id="champ-title" class="champ-title">the Unforgiven</div>
+          <div class="skill-priority" id="skill-priority">Skill priority: <span>Q › E › W</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <div class="control-label">Champion Level</div>
+        <div class="control-row">
+          <button class="btn" id="level-down">−</button>
+          <div class="level-value" id="level-display">1</div>
+          <button class="btn" id="level-up">+</button>
+        </div>
+      </div>
+      <div class="control-group">
+        <div class="control-label">Ability Haste</div>
+        <div class="control-row">
+          <input type="number" id="haste-input" class="haste-input" value="0" min="0" max="500" placeholder="0">
+          <div class="cdr-badge zero" id="cdr-badge">0% CDR</div>
+        </div>
+      </div>
+      <div class="control-group">
+        <div class="control-label">&nbsp;</div>
+        <button class="reset-btn hidden" id="reset-btn">↺ Auto Skills</button>
+      </div>
+    </div>
+
+    <div class="abilities-grid" id="abilities-grid">
+    <div class="ability-card ">
+      <div class="ability-icon-wrap">
+        <div class="key-badge">P</div>
+        <img class="ability-icon" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/passive/Yasuo_Passive.png" alt="P" onerror="this.style.background='#0E1E3C';this.src='';">
+      </div>
+      <div class="ability-content">
+        <div class="ability-name">Way of the Wanderer</div>
+        <div class="passive-note">Passive — no cooldown</div>
+      </div>
+      
+    </div>
+    <div class="ability-card ">
+      <div class="ability-icon-wrap">
+        <div class="key-badge">Q</div>
+        <img class="ability-icon" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/spell/YasuoQ1Wrapper.png" alt="Q" onerror="this.style.background='#0E1E3C';this.src='';">
+      </div>
+      <div class="ability-content">
+        <div class="ability-name">Steel Tempest</div>
+        
+      <div class="level-dots"><div class="dot filled"></div><div class="dot "></div><div class="dot "></div><div class="dot "></div><div class="dot "></div></div>
+      <div class="cd-ranks"><span class="cd-rank current">4s</span><span class="cd-arrow">›</span><span class="cd-rank ">4s</span><span class="cd-arrow">›</span><span class="cd-rank ">4s</span><span class="cd-arrow">›</span><span class="cd-rank ">4s</span><span class="cd-arrow">›</span><span class="cd-rank ">4s</span></div>
+    
+      </div>
+      
+    <div class="ability-level-ctl">
+      <button class="ability-btn" id="btn-Q-dn">−</button>
+      <div class="ability-lv-badge">1/5</div>
+      <button class="ability-btn" id="btn-Q-up">+</button>
+    </div>
+    </div>
+    <div class="ability-card unleveled">
+      <div class="ability-icon-wrap">
+        <div class="key-badge">W</div>
+        <img class="ability-icon" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/spell/YasuoW.png" alt="W" onerror="this.style.background='#0E1E3C';this.src='';">
+      </div>
+      <div class="ability-content">
+        <div class="ability-name">Wind Wall</div>
+        
+      <div class="level-dots"><div class="dot "></div><div class="dot "></div><div class="dot "></div><div class="dot "></div><div class="dot "></div></div>
+      <span class="not-leveled-note">Not leveled yet</span>
+    
+      </div>
+      
+    <div class="ability-level-ctl">
+      <button class="ability-btn" id="btn-W-dn">−</button>
+      <div class="ability-lv-badge">0/5</div>
+      <button class="ability-btn" id="btn-W-up">+</button>
+    </div>
+    </div>
+    <div class="ability-card unleveled">
+      <div class="ability-icon-wrap">
+        <div class="key-badge">E</div>
+        <img class="ability-icon" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/spell/YasuoE.png" alt="E" onerror="this.style.background='#0E1E3C';this.src='';">
+      </div>
+      <div class="ability-content">
+        <div class="ability-name">Sweeping Blade</div>
+        
+      <div class="level-dots"><div class="dot "></div><div class="dot "></div><div class="dot "></div><div class="dot "></div><div class="dot "></div></div>
+      <span class="not-leveled-note">Not leveled yet</span>
+    
+      </div>
+      
+    <div class="ability-level-ctl">
+      <button class="ability-btn" id="btn-E-dn">−</button>
+      <div class="ability-lv-badge">0/5</div>
+      <button class="ability-btn" id="btn-E-up">+</button>
+    </div>
+    </div>
+    <div class="ability-card unleveled">
+      <div class="ability-icon-wrap">
+        <div class="key-badge">R</div>
+        <img class="ability-icon" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/spell/YasuoR.png" alt="R" onerror="this.style.background='#0E1E3C';this.src='';">
+      </div>
+      <div class="ability-content">
+        <div class="ability-name">Last Breath</div>
+        
+      <div class="level-dots"><div class="dot "></div><div class="dot "></div><div class="dot "></div></div>
+      <span class="not-leveled-note">Not leveled yet</span>
+    
+      </div>
+      
+    <div class="ability-level-ctl">
+      <button class="ability-btn" id="btn-R-dn">−</button>
+      <div class="ability-lv-badge">0/3</div>
+      <button class="ability-btn" id="btn-R-up">+</button>
+    </div>
+    </div></div>
+
+    <!-- Guide Panel (shown when main + matching opponent selected) -->
+    <div id="guide-panel" class="guide-panel">
+      <div class="guide-header" id="guide-header">
+        <div class="guide-header-left">
+          <img id="guide-main-icon" class="guide-main-icon" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/champion/Kayle.png" alt="">
+          <div>
+            <div class="guide-header-title" id="guide-header-title">Kayle (Mid) vs Yasuo</div>
+            <div class="guide-header-sub" id="guide-header-sub">Matchup Guide — from your friend's spreadsheet</div>
+          </div>
+        </div>
+        <div class="guide-toggle-btn" id="guide-toggle">▼</div>
+      </div>
+      <div class="guide-body" id="guide-body" style="display: block;">
+    <div class="diff-row">
+      <span class="diff-label">Difficulty</span>
+      <div class="diff-bar"><div class="diff-seg filled-hard"></div><div class="diff-seg filled-hard"></div><div class="diff-seg filled-hard"></div><div class="diff-seg filled-hard"></div><div class="diff-seg filled-hard"></div><div class="diff-seg filled-hard"></div><div class="diff-seg filled-hard"></div><div class="diff-seg filled-hard"></div><div class="diff-seg "></div><div class="diff-seg "></div><span class="diff-number">7.5/10</span><span class="diff-badge hard">Hard</span></div>
+    </div>
+    
+    <div class="build-block has-override">
+      <div class="build-block-hdr">
+        <div class="guide-section-title">Runes &amp; Build</div>
+        <button class="build-edit-btn" onclick="startBuildEdit()">✎ Edit</button>
+      </div>
+      
+      <div class="build-row">
+        <span class="build-label">Runes</span>
+        <div class="build-icons">
+          <div class="bw" data-tip="Precision"><img class="bv-tree" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/7201_Precision.png" alt="Precision" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="Press the Attack"><img class="bi keystone" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Precision/PressTheAttack/PressTheAttack.png" alt="Press the Attack" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="Absorb Life"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Precision/AbsorbLife/AbsorbLife.png" alt="Absorb Life" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="Legend: Alacrity"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Precision/LegendAlacrity/LegendAlacrity.png" alt="Legend: Alacrity" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="Last Stand"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Sorcery/LastStand/LastStand.png" alt="Last Stand" onerror="this.parentElement.style.display='none'"></div>
+          <div class="b-divider"></div>
+          <div class="bw" data-tip="Sorcery"><img class="bv-tree" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/7202_Sorcery.png" alt="Sorcery" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="Celerity"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Sorcery/Celerity/CelerityTemp.png" alt="Celerity" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="Gathering Storm"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/Styles/Sorcery/GatheringStorm/GatheringStorm.png" alt="Gathering Storm" onerror="this.parentElement.style.display='none'"></div>
+          <div class="b-divider"></div>
+          <div class="bw" data-tip="+9 Adaptive Force"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatModsAdaptiveForceIcon.png" alt="+9 Adaptive Force" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="+9 Adaptive Force"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatModsAdaptiveForceIcon.png" alt="+9 Adaptive Force" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="+10-180 HP (scaling)"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatModsHealthPlusIcon.png" alt="+10-180 HP (scaling)" onerror="this.parentElement.style.display='none'"></div>
+        </div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Spells</span>
+        <div class="build-icons"><div class="bw" data-tip="Flash"><img class="bi summ" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/spell/SummonerFlash.png" alt="Flash" onerror="this.parentElement.style.display='none'"></div><div class="bw" data-tip="Exhaust"><img class="bi summ" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/spell/SummonerExhaust.png" alt="Exhaust" onerror="this.parentElement.style.display='none'"></div></div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Start</span>
+        <div class="build-icons"><div class="bw" data-tip="Health Potion"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/2003.png" alt="Health Potion" onerror="this.parentElement.style.display='none'"></div><span class="b-arrow">+</span><div class="bw" data-tip="Doran's Blade"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/1055.png" alt="Doran's Blade" onerror="this.parentElement.style.display='none'"></div></div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Early</span>
+        <div class="build-icons"><div class="bw" data-tip="Boots of Swiftness"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/3009.png" alt="Boots of Swiftness" onerror="this.parentElement.style.display='none'"></div><span class="b-arrow">›</span><div class="bw" data-tip="Recurve Bow"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/1043.png" alt="Recurve Bow" onerror="this.parentElement.style.display='none'"></div><span class="b-arrow">›</span><div class="bw" data-tip="Blasting Wand"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/1026.png" alt="Blasting Wand" onerror="this.parentElement.style.display='none'"></div></div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Core</span>
+        <div class="build-icons"><div class="bw" data-tip="Nashor's Tooth"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/3115.png" alt="Nashor's Tooth" onerror="this.parentElement.style.display='none'"></div><span class="b-arrow">›</span><div class="bw" data-tip="Dusk and Dawn"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/2510.png" alt="Dusk and Dawn" onerror="this.parentElement.style.display='none'"></div><span class="b-arrow">›</span><div class="bw" data-tip="Rabadon's Deathcap"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/3089.png" alt="Rabadon's Deathcap" onerror="this.parentElement.style.display='none'"></div></div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Last Item</span>
+        <div class="build-icons"><div class="bw" data-tip="Void Staff"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/3135.png" alt="Void Staff" onerror="this.parentElement.style.display='none'"></div><span class="b-or">or</span><div class="bw" data-tip="Banshee's Veil"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/3102.png" alt="Banshee's Veil" onerror="this.parentElement.style.display='none'"></div><span class="b-or">or</span><div class="bw" data-tip="Zhonya's Hourglass"><img class="bi item" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/item/3157.png" alt="Zhonya's Hourglass" onerror="this.parentElement.style.display='none'"></div></div>
+      </div>
+    </div>
+    <div class="guide-sections">
+      <div>
+        <div class="guide-section-title">Strategy</div>
+        <div class="guide-section-content"><ul><li>Level 1: use E on him to drag the wave and stack passive safely</li><li>After level 11 + first item look for extended trades and solo kills</li><li>Push first 2 waves (get level 2 first), crash 2nd wave, ward raptors</li><li>Let him shove every wave till level 6</li><li>If the wave is slow-pushing toward you, stay inside the wave to force his Q or AAs to destroy it</li><li>If he has Q2 (tornado) ready, don't step up — especially early</li><li>Use R half a second before being knocked up</li><li>Change your Q-dodge patterns each time</li><li>He can dash on minions to catch you — watch where your next wave is when fleeing</li></ul></div>
+      </div>
+      <div>
+        <div class="guide-section-title">What NOT To Do</div>
+        <div class="guide-section-content avoid-content"><ul><li>Don't poke without passive stacked (his slow AA animations let him stat-check you)</li><li>Don't prioritize hitting him over farming (he heals back with D-Shield, 2nd Wind, Absorb Life, Fleet)</li><li>Don't forget to check brushes with a blue ward</li><li>Don't step up if he has Q2 ready, especially early game</li></ul></div>
+      </div>
+      
+    </div></div>
+    </div>
+
+  </div><!-- /champion-section -->
+</div><!-- /container -->
+
+<script>
+// ─────────────────────────────────────────────────────────
+// MATCHUP GUIDE DATA  (from Kayle Midlane Matchup Sheet)
+// ─────────────────────────────────────────────────────────
+const GUIDES = {
+  Kayle: {
+    role: 'Mid',
+    champId: 'Kayle',
+    matchups: {
+      'Ahri': {
+        difficulty: 7,
+        tips: `Farm till level 6-7. Stand behind minions to dodge Q. Keep passive stacked at all times. Avoid her E (Charm) — baiting it is key. After level 7 with passive stacked trade: Q → AA → AA → AA → E → W out.`,
+        avoid: `Never trade without passive stacked. Respect her 3 dashes (she can escape or re-engage). Don't get hit by E while farming — it guarantees a free combo on you.`,
+        videos: ['https://www.youtube.com/watch?v=W8kjC1kXrPs', 'https://www.youtube.com/watch?v=N0iuqZh-G7c']
+      },
+      'Akali': {
+        difficulty: 8.5,
+        tips: `Farm early without taking damage — don't trade before 6. Bait her W (Twilight Shroud), then use your W to create space. Once passive stacked trade: Q → AA → AA → AA → E and get a PTA proc. Respect her E backward dash. She wants you at 60% HP before all-inning.`,
+        avoid: `Never go below 60% HP after level 6. Don't step up if the wave is on her side. Don't trade without passive stacked. Never fight her inside her W smoke.`
+      },
+      'Akshan': {
+        difficulty: 7.5,
+        tips: `Max ranged Q and E — keep respecting E range on him. Avoid trades before level 7. After level 7 with passive stacked: Q → AA → AA → E → W out. Use pings whenever he roams so your team can follow.`,
+        avoid: `Don't go below 60% HP (he can easily dive you with grapple + ignite). Avoid overextending without R available. Don't follow his roams — push and take plates instead.`,
+        videos: ['https://www.youtube.com/watch?v=hFYallyT2fQ']
+      },
+      'Anivia': {
+        difficulty: 7,
+        tips: `Bait her Q by acting like you're going for a minion, then side-step. After level 6 use the same bait. Keep your W available to dodge Q or to run out of her R zone.`,
+        avoid: `Don't let her W (Crystallize) block you against your own tower. Don't try to match her wave clear — you'll lose mana. Don't match her roams. Don't play too passive after level 6 when her R is up.`
+      },
+      'Annie': {
+        difficulty: 7,
+        tips: `Pre-6 AFK farm — there's very little you can do. Avoid her when her Passive (stun) is stacked. Stay above 70% HP at all times. Trade only when you know her stun is NOT stacked.`,
+        avoid: `Don't trade when her stun is up unless you're significantly ahead. Don't take even trades. Don't facecheck brushes (she can cheese you with Tibbers + stun).`
+      },
+      'Aurelion Sol': {
+        difficulty: 6,
+        tips: `Levels 1-6 look for short trades when passive is stacked — poke with 2 E's before going melee. Stand behind minions to avoid his Q. Gets much easier after level 11. Bait his W (big cooldown).`,
+        avoid: `Don't follow his roams — push and take plates. Don't leave the wave unpushed. Don't extended-trade unless ahead. Don't waste W — save it to escape his Q/E/W combos.`,
+        videos: ['https://www.youtube.com/watch?v=3laq29Qahmw']
+      },
+      'Aurora': {
+        difficulty: 8.5,
+        tips: `Bait her Qs — that's her main damage source and without it she can't easily proc Electrocute. After level 6 look for short trades after she misses Q or uses E. Bait her abilities by feinting toward minions.`,
+        avoid: `Don't stand still. Don't roam blindly — always push wave first. Don't take unnecessary poke. Don't take extended trades (she can dash away when the trade turns bad).`
+      },
+      'Azir': {
+        difficulty: 9,
+        tips: `Farm early and don't take unnecessary damage. If the wave is pushing toward him, step up to force his W + soldier AA — this makes the wave bounce back. Keep distance so you can kite out of his R or force him to dash in on you.`,
+        avoid: `Never fight without passive stacked — ever. Don't follow his roams. Don't stand still during fights (his soldiers have AOE).`,
+        videos: ['https://www.youtube.com/watch?v=vM1xYQ_IxQ8']
+      },
+      'Cassiopeia': {
+        difficulty: 9,
+        tips: `Farm till level 6 — bait her Q by feinting toward minions and dodging. Dodging Qs makes this lane way more manageable, so study her cast patterns. Only look for short trades with passive stacked.`,
+        avoid: `Don't stand still after each auto attack (her R will stun you if you're facing her). Don't walk in a straight line. Don't be afraid to limit test the matchup — learn her combos.`,
+        videos: ['https://www.youtube.com/watch?v=lFXlTlePz30']
+      },
+      "Cho'Gath": {
+        difficulty: 7,
+        tips: `Focus on farming early — his passive heals back nearly all trade damage. Pay attention to his Q direction patterns (it's a narrow line). Go aggressive after level 6. Stay above 70% HP after level 6 to avoid the silence → R combo killing you.`,
+        avoid: `Don't stand still (Q is a narrow skill shot but silence sets up his R). Don't follow his roams. Don't hold your R for his R — use it before the silence lands if you're at lethal HP.`
+      },
+      'Corki': {
+        difficulty: 7.5,
+        tips: `No trades before level 6. Purely farm and get as many CS as possible. Avoid taking unnecessary poke damage.`,
+        avoid: `Never fight without passive stacked. Don't stand still — his missiles are skill shots. Don't 1v1 below 70% HP if he's at full HP.`
+      },
+      'Diana': {
+        difficulty: 8,
+        tips: `Levels 1-3: do nothing and farm safely. Everything revolves around dodging her Q — if Q hits she double-dashes in and wins the trade. After level 6 she can trade R for R (not in your favor). Look to fight after level 11 + Nashor's Tooth, or immediately after she misses Q with passive stacked. Create distance after each trade.`,
+        avoid: `Don't trade if she lands her Q — ever. Don't underestimate her burst damage. Use R when she engages OR when she Rs in — never when at really low HP unless you can get the kill. Don't use W as a panic button to block her Q. Don't facecheck bushes.`,
+        videos: ['https://www.youtube.com/watch?v=d6-l5N0u1Uk', 'https://www.youtube.com/watch?v=Qc9aibNrx-0']
+      },
+      'Ekko': {
+        difficulty: 8,
+        tips: `Level 1 get passive stacked in case he E's in — immediately trade back AA → AA → AA → E. After level 6 keep passive stacked and trade whenever he uses E. Avoiding his Q helps remove his bonus move speed from his passive. Pay attention to his W animation — it telegraphs his damage window.`,
+        avoid: `Don't trade without passive stacked. Don't let him shove every wave without contest. Don't stand still. Don't use R until he uses his first.`
+      },
+      'Fizz': {
+        difficulty: 8.5,
+        tips: `Stack passive at level 1. Get prio on the first 2 waves and ward enemy raptors. Stay above 70% HP. Respect his Q range (it's the same as your AA range). Poke him through minions with your Q (has extended hitbox).`,
+        avoid: `Don't use R until he uses his first. Don't follow his roams. Limit test needed to learn his dive threshold. Don't take damage during wave slow-push (he can dive at 60% HP + Ignite).`
+      },
+      'Galio': {
+        difficulty: 7.5,
+        tips: `Level 1: use E to drag wave closer, stack passive safely. Get prio on the first 2 waves, ward raptors. Farm till level 6, then punish him every time he tries to get wave prio. Force the sidelane after level 11. Learn to create space and W out on his E wind-up.`,
+        avoid: `Don't fight without passive stacked. Don't match his roams — especially his R (just ping). Don't prioritize rotations over wave and plates. Don't stand still — actively click-walk to W out on his E. Don't get overconfident about his E and W range.`,
+        videos: ['https://www.youtube.com/watch?v=yvYgLsvuWtk']
+      },
+      'Gangplank': {
+        difficulty: 7,
+        tips: `Let him push levels 1-6 and focus on farming. After level 6 trade whenever he uses his Q. Save your E to destroy his barrels before they explode (act fast). Look for extended or short trades with passive stacked. If he Q's a minion near you, trade back immediately.`,
+        avoid: `Don't interact without passive stacked. Don't be afraid to chase with W once his barrels are destroyed. Don't look for early kills (his Grasp + Q combo wins early trades). Don't take free poke when his Grasp + Q is off cooldown.`
+      },
+      'Gragas': {
+        difficulty: 6.5,
+        tips: `After level 6 look for short trades while dodging his Q. Respect his E range. Keep passive stacked and stand behind minions. Stay above 70% HP. After level 11 you hard-win the sidelane.`,
+        avoid: `No trades levels 1-6 (he heals back everything with his passive). Don't be afraid to short-trade after he misses Q. Don't stay too close if he might R you into a Q at 50% HP.`
+      },
+      'Hwei': {
+        difficulty: 9,
+        tips: `Levels 1-6: do nothing but farm as many CS as possible. Minimize the damage you take. Bait his abilities by feinting toward minions. When the wave pushes to him, take the trade damage inside the wave so it bounces back (his abilities are all AOE and will hit the minions too).`,
+        avoid: `Don't take unnecessary damage. Don't stand still — ever. Don't go for many trades in this lane. Don't try to run him down (he has too much poke and escape).`
+      },
+      'Irelia': {
+        difficulty: 8,
+        tips: `Stack passive immediately on wave arrival. Push the first 2 waves, ward raptors. Let her push till level 6, then farm safely. Only fight after she has used E — never melee-fight when her passive (Ionian Fervor) is stacked. SPECIAL NOTE: This is the ONLY midlane matchup where you max E + run Lethal Tempo.`,
+        avoid: `Don't fight inside the wave (her passive stacks up). Don't try to push a wave you can't push. Don't take 2v2 or 3v3 fights early on.`,
+        videos: ['https://www.youtube.com/watch?v=o1h-94_zQGk']
+      },
+      'Jayce': {
+        difficulty: 8,
+        tips: `Respect levels 1-6 — he always wins. Poke with Q through the wave (extended range). Stand behind minions to avoid his E + Q poke combo. Be aware he can Q a nearby minion and the bolt will curve into melee range.`,
+        avoid: `Don't take many trades — only good ones with passive stacked. Don't underestimate his damage (1 full combo can 100-0 you). Don't hesitate to R early if needed. Don't be afraid to 1v1 after first item or level 11.`
+      },
+      'Kassadin': {
+        difficulty: 7.5,
+        tips: `First 2 waves get prio, ward raptors. Use E before or after his Q shield for maximum damage. Keep passive stacked after level 6 — you win every short and extended trade. ALWAYS push waves before roaming. Farm as much gold and XP as possible.`,
+        avoid: `Don't fight without passive stacked. Don't drop below 40% HP (he can stack R 4 times + Flash for an unreactable combo). Don't break freeze to poke — this matchup is all about XP and Gold lead.`,
+        videos: ['https://www.youtube.com/watch?v=FkoLQSe4OfU']
+      },
+      'Katarina': {
+        difficulty: 3.5,
+        tips: `Push the first 2 waves, ward raptors, and poke with E on cooldown. After level 6 contest every wave — keep passive stacked. Ward the middle of lane before recalling to track her roams. Stay away from her daggers (her E range equals her AA range). In most cases, R her while she's casting her R.`,
+        avoid: `Don't match her roams — push wave and take plates. Don't fight without passive stacked. Don't use Q before she dashes (Q is your main damage in short trades — don't waste it).`,
+        videos: ['https://www.youtube.com/watch?v=4opQTifIzWU', 'https://www.youtube.com/watch?v=dORfDXYKGCk']
+      },
+      'Kennen': {
+        difficulty: 8,
+        tips: `Levels 1-6: do nothing, purely farm. Stay above 60% HP especially when he has Ignite + Electrocute. Stand behind minions to avoid his Q. Respect his E dash speed (especially with boots). Only fight with passive stacked — and only chase him after he uses E.`,
+        avoid: `No unnecessary damage early levels. Don't trade before level 6. Don't facecheck brushes. Don't underestimate his burst damage.`
+      },
+      'LeBlanc': {
+        difficulty: 9,
+        tips: `Avoid ALL trades pre-level 6. If the wave is pushing toward her, let her Q you and immediately W out — the wave will attack her and push back. After first recall + level 6, look for extended trades (short trades are hard vs her mobility). Ping aggressively every time she leaves lane.`,
+        avoid: `Don't stand still. Don't step up after she marks you with Q (her W deals ~30% of your HP). Don't match her roams. Don't trade without passive stacked.`,
+        videos: ['https://www.youtube.com/watch?v=77ZDup8vSUE']
+      },
+      'Lissandra': {
+        difficulty: 7.5,
+        tips: `Levels 1-6: farm only — completely ignore her. Create enough distance so she can only poke with Q, not W or E. Her R has a half-second cast animation — practice the timing to use your R just before hers lands and negate all damage. In teamfights and small skirmishes, R whoever she Rs.`,
+        avoid: `Don't overextend (she can E to you). Don't look for extended trades before level 11 — short trades only with PTA + passive stacked. Don't get into W range when trading — force her to use E instead.`,
+        videos: ['https://www.youtube.com/watch?v=lcqqCWknPpM']
+      },
+      'Lux': {
+        difficulty: 8,
+        tips: `Bait her Q by feinting toward a minion and side-stepping. If hit by E, W out instantly before the empowered AA lands. If you're recalling but she stays in lane — don't show in the river on the fog of war. Stay above 60% HP. R should only be used when she uses her full combo on you.`,
+        avoid: `Don't recall off a non-cannon wave (she gets free plates). Don't get hit by E every time (30+ CS advantage otherwise). Don't be afraid to trade after she misses E or Q.`,
+        videos: ['https://www.youtube.com/watch?v=7Qt__B5w7aA', 'https://www.youtube.com/watch?v=97jF2uBECwU']
+      },
+      'Malphite': {
+        difficulty: 8.5,
+        tips: `Avoid his Q range. Stay above 60% HP after level 6. If wave is slow-pushing to him, get into Q range so he pulls minion aggro. Be ready to react with R to his R (the farther you are, the easier to react). Dodge his Arcane Comet (Q) with W. With passive stacked: Q → AA → AA → AA → W → E. Spam E off cooldown to break his passive shield.`,
+        avoid: `Don't fight levels 1-6. No unnecessary damage. Don't trade without passive stacked. Don't be afraid to W-chase if you're winning the trade.`
+      },
+      'Malzahar': {
+        difficulty: 6,
+        tips: `Free farm levels 1-6. Pay attention to recall timers and wave state. After levels 6-7, always AA to remove his passive shield before trading — then Q first to proc PTA. W to chase or dodge his Q. Hard-win after level 11. Stay above 50% HP when he has R available.`,
+        avoid: `Don't fight inside the wave. Watch for his E bouncing from a nearby minion onto you. Don't facecheck brushes. Don't trade without removing his passive with an AA first. Don't be afraid of extended or short trades once shield is gone.`
+      },
+      'Mel': {
+        difficulty: 8.5,
+        tips: `Get hit by as few of her E's as possible — that's her main burst damage source. Use your W to dodge it. Bait her abilities by feinting toward minions. Be ready for her to reflect your W back. Trade after she has used E.`,
+        avoid: `No trades before level 6. Don't match her roams — just push the next wave. NEVER fail to use your R before she casts her R (she can reflect it).`
+      },
+      'Naafiri': {
+        difficulty: 6.5,
+        tips: `Stack passive on wave arrival. Get prio on the first 2 waves, ward enemy raptors. Can look for a level 1 kill if you dodge one of her 2 Qs. After level 6 keep passive stacked and AA the wave. Short trades with passive stacked — start with Q. Save W to dodge one of her Qs. Save R for when she dashes onto you.`,
+        avoid: `Don't be afraid to fight — especially after level 11 or first item. No trades without passive stacked. Don't follow roams if the wave state is bad. Don't underestimate her burst damage. Never be below 50% HP without R.`,
+        videos: ['https://www.youtube.com/watch?v=KimLlI_sPFQ']
+      },
+      'Nasus': {
+        difficulty: 6,
+        tips: `Zone him off the first 2 waves, hard push the 3rd, and ward raptors. Punish him every time he goes for a CS (PTA procs make this really effective). Deny stacks and minions as much as possible. After level 6 perma-AA with passive stacked and shove every wave for plate/CS lead. Use W or Q to escape his W slow run-down.`,
+        avoid: `Don't underestimate his W slow. Don't destroy a freeze just to land one Q. Don't be afraid to learn your damage limits. Don't overextend without passive stacked + escape tools. Don't be afraid to use Ghost if he uses his.`
+      },
+      'Neeko': {
+        difficulty: 9.5,
+        tips: `Focus on farming only. Trading is hard (she can W away from your combo). Use W after her Q to dodge Arcane Comet. Count the minions every wave (if one is a different color it could be her passive cheese). Place a ward in the middle of lane and ping her roam direction.`,
+        avoid: `Avoid trading until level 11 or first item. Don't match her roams. No unnecessary damage. Don't stand still — bait her abilities by actively moving.`
+      },
+      'Pantheon': {
+        difficulty: 7.5,
+        tips: `Level 1: use E on him to drag the wave closer, stack passive safely. Once passive stacked, spam E off cooldown, crash 2 waves and ward raptors. Let him push till level 6. Keep passive stacked — when he uses W, you have half a second to Q before the stun, then kite out of the stun. Ward the middle of lane to track his roam and R direction. After level 11 + first item it's a free 1v1 on the sidelane.`,
+        avoid: `Never trade without passive stacked. Don't underestimate his burst damage. Don't be below 60% HP without R. Don't be afraid of short and extended trades once passive is stacked and you're not behind. Don't take unnecessary damage while farming.`
+      },
+      'Qiyana': {
+        difficulty: 7.5,
+        tips: `Level 1: use E to drag the wave. Stack passive safely. Ward raptors. Get prio on the first 2-3 waves then let the wave bounce back till level 6. Respect her E + Q range (poke and zone). After level 6 keep passive stacked and punish her every time she tries to get prio. When she has green form (grass element — invisible) — treat it as almost unplayable. Always R before she gets her R off.`,
+        avoid: `Never trade when she has green form ready. Don't facecheck brushes. Don't match her roams. Don't go below 80% HP without R (especially with Ignite). Don't R before she Rs in a teamfight. Never fight her without R unless massively ahead.`
+      },
+      'Ryze': {
+        difficulty: 9,
+        tips: `Levels 1-6: AFK farm — nothing to do. If the wave slow-pushes to him either be inside the wave (sacrificing HP) or let him E/W you then immediately W out. After level 6 still prioritize farming. Ward the middle of lane and ping his roam direction. Short trades only with passive + Q + W + E ready.`,
+        avoid: `Don't match his roams unless the wave looks very good for it. Don't disrespect his damage output. Don't be isolated — stay behind minions or close to tower. Don't fall behind in CS/XP — this matchup is entirely about that.`
+      },
+      'Smolder': {
+        difficulty: 7.5,
+        tips: `Levels 1-6: do not trade at all — farm purely. After level 6 short trades only with passive ready. Minimize damage at all times (you need HP to farm under tower). Only use R when he Rs you. Use W to dodge his W. Once his Q gains AOE damage, don't stand near minions when he casts it.`,
+        avoid: `Don't let him Q you with Grasp multiple times (it hurts and gives him stacks). Don't let him push every wave unchallenged after level 6. Don't underestimate how strong his scaling becomes. Don't be afraid of extended trades if you can win them.`
+      },
+      'Swain': {
+        difficulty: 7.5,
+        tips: `Levels 1-6: do nothing but farm. Use W to dodge his E and sustain his Q poke. Bait his E by feinting toward a minion. After level 6 look for short trades. Level 11 you hard-win unless he's very far ahead.`,
+        avoid: `Don't stand still while farming (he will land E). Don't look for extended trades unless he's below 60% HP. Don't let him land E on you just to get a non-cannon minion.`
+      },
+      'Sylas': {
+        difficulty: 8,
+        tips: `Level 1: use E to drag the wave, stack passive safely. Push 2 waves and ward raptors. Let him push till level 6. If he Es you, dodge his 2nd E — you can run him down. Even if hit by 2nd E with passive stacked the trade is even or slightly in your favor. After level 6 stand behind minions and use W to avoid his 2nd Q. Remember: when he has no R, cancel his W healing with your R.`,
+        avoid: `NEVER use R before his R (instant 1v1 loss). Don't repeat the same movement pattern (makes his 2nd E easy to land). Don't underestimate Electrocute + Ignite burst. NEVER fight without passive stacked.`,
+        videos: ['https://www.youtube.com/watch?v=NyS8f5EIoa0']
+      },
+      'Syndra': {
+        difficulty: 9.5,
+        tips: `Levels 1-6: AFK farm with zero interaction. After level 6, only trade with passive stacked when confident you can dodge her E (or after she already missed it). Stay above 60% HP (you need HP to get your R off through her stun). Bait her E during laning. Use W to dodge her Q or E. After level 11 when she uses E and you have passive stacked, instantly W to her and run her down.`,
+        avoid: `Don't repeat the same movement. Never attempt a trade without passive stacked. Don't take big HP damage before the wave crashes into tower.`
+      },
+      'Taliyah': {
+        difficulty: 7.5,
+        tips: `Levels 1-6: barely interact — farm. After first recall, short trades with passive stacked. After her level 6, ward the middle of lane to track her E roam direction. Prioritize the wave before moving anywhere. Get inside the wave to push back when she's slow-pushing. Stand behind minions vs her Q. Use W to dodge her E. If she has Phase Rush, bait it out (3 hits to trigger/expire) then run her down. After level 11 you hard-win all trades.`,
+        avoid: `Don't be isolated (she gets maximum DPS). Don't repeat movement patterns (she can predict with E). Don't be afraid to fight after level 6. Don't leave the wave in a bad state to follow her on the map.`,
+        videos: ['https://www.youtube.com/watch?v=vS0jdiIB5mg', 'https://www.youtube.com/watch?v=vnFdslm_P1o']
+      },
+      'Talon': {
+        difficulty: 7,
+        tips: `When the wave arrives, E him instantly (drags wave closer, lets you stack passive safely). Push 2 waves, ward raptors. You can look for a solo kill if he disrespects your damage. Let him push till level 6. After level 6 keep passive stacked and don't fear trades — match his prio so he can't roam for free. In teamfights, save R for after he uses his. After level 11 always win 1v1 with passive stacked. His Q has the same range as your E.`,
+        avoid: `Don't disrespect his damage (Ignite + Electrocute). Don't follow roams or dive attempts without pushing your wave first. Never R before he uses his R first. Don't short-trade without at least a half-stacked passive.`
+      },
+      'Tristana': {
+        difficulty: 8,
+        tips: `Levels 1-6: farm max — she'll try to zone and trade but resist. After level 6 short trades with passive stacked. After level 11 you hard-win the sidelane. Stay above 60% HP without R. Stay away from your tower when she puts her E on it (huge explosion range). She can never freeze the wave (your passive), so recall on a cannon wave. If the wave slow-pushes to her, only take 1-2 AAs. Respect her W jump range.`,
+        avoid: `Don't roam without shoving the wave. Don't facecheck — always blue-ward first. Don't use R too early or too late — use it when she jumps in, let her do 2-3 AAs, then R. Don't underestimate W range. Don't let her take all the tower plates. Don't be afraid of extended trades if it looks good.`
+      },
+      'Tryndamere': {
+        difficulty: 7,
+        tips: `Level 1: if he has Doran's Blade, E him then safely stack passive. Get level 2 first, push the 2nd wave, ward raptors. After level 6 keep passive permanent and poke him. After level 11 or first item try to get prio. Use W only when he dashes in — to create space. Be smart with summoner usage — don't waste Ghost unless necessary. Don't run out of mana. Throw Q before he dashes in if you want to poke, then respect the cooldown.`,
+        avoid: `Don't let him do whatever he wants — respond with a short trade or wave matching. Don't roam — prioritize wave and tempo. NEVER use R before his — use it 2.5 seconds after his R ends. No short or extended trades without passive stacked.`
+      },
+      'Twisted Fate': {
+        difficulty: 6,
+        tips: `Levels 1-6: farm purely. Give up minions if needed (especially to avoid his E and W damage). Ward the middle of lane once he hits level 6. Use W to avoid AA stun range or dodge his Q. Short-trade the moment his W is on cooldown. Respect Rapid Fire Cannon + W stun range later in the game. In teamfights, R just before his Golden Card stun lands. QSS is a good item vs him.`,
+        avoid: `Don't follow his rotations — just ping your team. Don't be afraid of short or extended trades after he wastes W. Don't let him take many plates. Don't recall during his roam — push the wave instead. Don't let him have permanent prio after level 6.`
+      },
+      'Veigar': {
+        difficulty: 4,
+        tips: `Levels 1-6: get as many minions as possible. After level 6 with good movement you win most trades. Don't get stunned by the edge of his E cage (it prevents you getting R off). Bait his E (long cooldown) then run him down with passive stacked. After level 11 or first item you win every short and long trade. Use R on his W + Q combo or on his R depending on the scenario. Stand behind 2 minions or outside Q range to avoid free AP stacks.`,
+        avoid: `Don't be afraid to fight after level 6. Don't roam — stay for XP and Gold (matchup is all about the lead). Don't disrespect his damage (you have the lowest MR in the game). Don't hesitate to run him down when the opportunity arises. Don't repeat the same movement patterns.`,
+        videos: ['https://www.youtube.com/watch?v=Bo39ytp42Jo', 'https://www.youtube.com/watch?v=9OyqCS2wAKo']
+      },
+      "Vel'Koz": {
+        difficulty: 6,
+        tips: `Levels 1-6: AFK farm — don't take huge poke. Stand between minions to block his Qs. His Q slow guarantees E hits — use W to dodge Q or his E. Only R when he uses his R. With passive stacked after your Q, use W to speed up and dodge his E for a good trade. After level 11 if he's below 70% HP on the sidelane, free dive with passive stacked.`,
+        avoid: `Don't disrespect his damage (poke, burst, and true damage). Don't force trades or chase without passive stacked. Don't repeat movement patterns. Don't take massive poke (his Q range lets him zone effectively).`
+      },
+      'Vex': {
+        difficulty: 7,
+        tips: `Levels 1-6: farm and stay above 60% HP (especially with Electrocute + Ignite). After level 6 look for short trades with passive stacked. Best timing: after she uses her fear or when fear isn't ready. Use W to dodge her fear projectile. Bait fear by feinting toward a minion then dodge with W. Hold R for when she Rs flying toward you. After level 11 on the sidelane if she's around 70% HP and no fear ready, you can dive with passive stacked.`,
+        avoid: `Don't facecheck brushes (she might cheese with fear ready). Don't underestimate her burst (you have the lowest MR in game). Don't hesitate to look for extended trades once you've won the short trade and fear isn't up.`
+      },
+      'Viktor': {
+        difficulty: 9.5,
+        tips: `Levels 1-6: AFK farm — take as little damage as possible. After level 6 if he has Bone Plating, chip it off with Q through minions or sneak an AA first. Level 11 + passive stacked + first item on the sidelane = run him down. If the wave slow-pushes to him, walk up, let him Q you, then immediately walk back (minions will aggro him and push the wave back). Bait Bone Plating before committing to a full trade. Use W to escape his W zone (avoids the stun). Either R his E damage or his Q + empowered AA depending on which deals more in that moment.`,
+        avoid: `Never start a trade without baiting his Q shield AND Bone Plating first. No trade without passive stacked. Don't be afraid of extended trades when the situation allows. Don't underestimate how hard the laning phase is with his E poke.`,
+        videos: ['https://www.youtube.com/watch?v=GSWp9OV7hS4', 'https://www.youtube.com/watch?v=heMmwfcVyfw']
+      },
+      'Vladimir': {
+        difficulty: 7.5,
+        tips: `Levels 1-6: ignore him — farm only. After level 6 look for short trades only with passive stacked when his empowered Q is NOT ready. After level 11 + first item, more aggressive — extended trades and run-downs are possible. Stand behind minions (his E gets blocked by minions). Use W to run from his empowered Q speedup. R only after he uses his R — you want to block the biggest chunk of damage. He heals back everything from Q on minions so prioritize farming over fighting.`,
+        avoid: `Don't trade without a follow-up plan (he'll just heal it back). Don't start a trade without passive stacked. Don't let him Q you under tower while farming. Don't underestimate his healing. Don't forget his W has a big cooldown — use that window. Don't be afraid to all-in after 2 items. Never trade without passive stacked.`,
+        videos: ['https://www.youtube.com/watch?v=5wf5WDHQ67U', 'https://www.youtube.com/watch?v=WYrvputwFrA']
+      },
+      'Xerath': {
+        difficulty: 6,
+        tips: `Levels 1-6: AFK farm. After level 6 keep passive stacked and AA minions for extra movespeed (helps dodging). After level 11 if he's around 60% HP on the sidelane, dive with passive stacked. Stand behind minions (he can't stun you through them). To trade: W to dodge his E, Q through minions, then W in for a short trade. You can Flash his E if you see kill potential.`,
+        avoid: `Don't stand still while farming. Don't lose too much HP in early levels. Don't repeat the same dodge cycle. Don't trade without passive stacked. Don't do predictable left-right dodging (he will predict and prefire).`,
+        videos: ['https://www.youtube.com/watch?v=-ZOA2Mxxw4Q']
+      },
+      'Yasuo': {
+        difficulty: 7.5,
+        tips: `Level 1: use E on him to drag the wave and stack passive safely. After level 11 + first item look for extended trades and solo kills. Push first 2 waves (get level 2 first), crash 2nd wave, ward raptors. Let him shove every wave till level 6. If the wave is slow-pushing toward you, stay inside the wave to force his Q or AAs to destroy it. If he has Q2 (tornado) ready, don't step up — especially early. Use R half a second before being knocked up. Change your Q-dodge patterns each time. He can dash on minions to catch you — watch where your next wave is when fleeing.`,
+        avoid: `Don't poke without passive stacked (his slow AA animations let him stat-check you). Don't prioritize hitting him over farming (he heals back with D-Shield, 2nd Wind, Absorb Life, Fleet). Don't forget to check brushes with a blue ward. Don't step up if he has Q2 ready, especially early game.`
+      },
+      'Yone': {
+        difficulty: 7.5,
+        tips: `Level 1: use E on him to drag the wave and stack passive safely. Only use E before or after his W in early levels. After level 11 + first item look for extended fights and solo kills on the sidelane. Push first 2 waves (get level 2 first), crash 2nd wave, ward raptors. Let him shove every wave till level 6. Only use R on his Q2 or while he's casting R and you can't dodge it. Respect that Q2 + E gives him movement speed and leads to a winning trade. If you dodge Q2 on the sidelane at level 11 + full item, you basically win the 1v1.`,
+        avoid: `Don't trade without passive stacked. Don't disrespect his gap closers. Don't prioritize hitting him over farming (he heals back from D-Shield, 2nd Wind, Absorb Life, Fleet). Don't hesitate to limit test — this matchup has a lot of micro.`,
+        videos: ['https://www.youtube.com/watch?v=SGaNSdT_KYM']
+      },
+      'Zac': {
+        difficulty: 6,
+        tips: `Level 1: use E to drag the wave, stack passive safely. After level 6 keep passive stacked and poke him. After level 11 + full item look for extended trades and solo kills. Push first 2 waves (get level 2 first), crash 2nd, ward raptors. Let him shove till level 6. Use W to dodge his E or Q (his main trading tools). Use R when he pulls you with his Q. Step on his passive blobs to deny healing — your R nearly oneshots blobs (needs R + 1 AA). Keep good distance. Watch for his E while standing still taking a plate.`,
+        avoid: `Never trade without passive stacked. Don't underestimate his damage and healing. Don't be afraid to run him down after dodging E and Q. Don't build anti-heal (the item is bad on Kayle). Don't forget he can Q a minion + Flash on top of you and yank you back.`
+      },
+      'Zed': {
+        difficulty: 8,
+        tips: `Level 1: use E to drag the wave, stack passive safely. Push first 2 waves (get level 2 first), crash 2nd, ward raptors. Let him shove till level 6. If the wave slow-pushes to him, stand inside the wave forcing him to use AOE (which destroys the wave). Short trades with passive stacked only. Use W to dodge at least one Q. Be aware of shadow positioning — don't be baited thinking he can't teleport back. Without R stay above 80% HP. Trading Rs is never worth it for you (your R CD is longer). When he Rs you, wait half a second to a full second before using your R to negate all his damage.`,
+        avoid: `Don't forget his W has a big early cooldown — use that window. Don't let him get free prio after levels 6-7. Don't look for extended trades — this matchup is all about short trades. Don't facecheck — always blue-ward first. Don't forget he can teleport back to shadows even after a few seconds. Don't repeat the same movement pattern.`,
+        videos: ['https://www.youtube.com/watch?v=kvy4wsrEuHY']
+      },
+      'Ziggs': {
+        difficulty: 7.5,
+        tips: `Levels 1-6: AFK farm. If the wave slow-pushes to him, position inside the wave forcing his AOE to bounce it back. Clear waves fast to deny plates. Watch your HP when going for minions (easy poke, low MR). Remember his W can execute a low-HP tower. His W has a big cooldown — bait it before committing to a solo kill. Use W to dodge his Qs. If he's around 60% HP at level 11 + full item, easy dive.`,
+        avoid: `Don't trade without passive stacked. Don't let him take free prio after level 6. Don't let him AA the tower without responding. Don't disrespect his burst damage. Don't be predictable with your movement.`
+      },
+      'Zoe': {
+        difficulty: 9,
+        tips: `Levels 1-6: AFK farm — stay as healthy as possible. Short and extended trades are possible when she's missed or used E, especially after first item or level 11. You have the lowest MR in game and she has 100% AP scaling — be very conservative. Farm from max range. Avoid free damage. She can pick up items from the ground and gain movespeed. Use W to dodge her E or run from Q range. If in fatal range and hit by E, use R just before the Drowsy sleep effect, then run toward her — forces her to Q before your R expires. Respect her R range. Stay behind minions. QSS or Banshee's Veil are great purchases vs her.`,
+        avoid: `Don't underestimate her damage at all. Don't stay close to minions (Q is AOE). Don't forget her E goes through towers (dangerous while farming under tower). Don't trade without passive stacked. Don't be close to walls (she can extend E through walls). Don't facecheck brushes. Don't forget to use blue ward on the sidelane. Don't hesitate to run her down if she misses E and you have passive stacked.`,
+        videos: ['https://www.youtube.com/watch?v=VKT5rPJ7MJk']
+      },
+    }
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// LEVELING ORDERS
+// ─────────────────────────────────────────────────────────
+const LEVELING = {
+  'Aatrox':['Q','E','W'],'Ahri':['Q','E','W'],'Akali':['Q','E','W'],'Akshan':['E','Q','W'],
+  'Alistar':['W','Q','E'],'Amumu':['Q','E','W'],'Anivia':['Q','E','W'],'Annie':['Q','W','E'],
+  'Aphelios':['Q','W','E'],'Ashe':['W','Q','E'],'Aurelion Sol':['Q','E','W'],'Azir':['W','Q','E'],
+  'Bard':['Q','W','E'],"Bel'Veth":['E','Q','W'],'Blitzcrank':['Q','E','W'],'Brand':['W','Q','E'],
+  'Braum':['Q','E','W'],'Briar':['E','Q','W'],'Caitlyn':['Q','E','W'],'Camille':['E','Q','W'],
+  'Cassiopeia':['E','Q','W'],"Cho'Gath":['Q','E','W'],'Corki':['Q','E','W'],'Darius':['W','E','Q'],
+  'Diana':['Q','W','E'],'Dr. Mundo':['Q','E','W'],'Draven':['Q','E','W'],'Ekko':['Q','W','E'],
+  'Elise':['E','Q','W'],'Evelynn':['Q','W','E'],'Ezreal':['Q','E','W'],'Fiddlesticks':['W','E','Q'],
+  'Fiora':['Q','W','E'],'Fizz':['W','Q','E'],'Galio':['Q','E','W'],'Gangplank':['Q','W','E'],
+  'Garen':['E','Q','W'],'Gnar':['Q','E','W'],'Gragas':['Q','E','W'],'Graves':['Q','E','W'],
+  'Gwen':['Q','E','W'],'Hecarim':['E','Q','W'],'Heimerdinger':['Q','E','W'],'Illaoi':['Q','W','E'],
+  'Irelia':['Q','E','W'],'Ivern':['Q','E','W'],'Janna':['E','Q','W'],'Jarvan IV':['Q','E','W'],
+  'Jax':['W','E','Q'],'Jayce':['Q','E','W'],'Jhin':['W','Q','E'],'Jinx':['Q','W','E'],
+  "K'Sante":['Q','W','E'],"Kai'Sa":['Q','E','W'],'Kalista':['Q','E','W'],'Karma':['Q','W','E'],
+  'Karthus':['Q','W','E'],'Kassadin':['E','Q','W'],'Katarina':['Q','E','W'],'Kayle':['E','Q','W'],
+  'Kayn':['Q','E','W'],'Kennen':['Q','E','W'],"Kha'Zix":['Q','W','E'],'Kindred':['Q','E','W'],
+  'Kled':['Q','E','W'],"Kog'Maw":['W','E','Q'],'LeBlanc':['Q','W','E'],'Lee Sin':['Q','W','E'],
+  'Leona':['E','W','Q'],'Lillia':['Q','E','W'],'Lissandra':['Q','E','W'],'Lucian':['Q','E','W'],
+  'Lulu':['Q','E','W'],'Lux':['E','Q','W'],'Malphite':['Q','W','E'],'Malzahar':['Q','E','W'],
+  'Maokai':['W','Q','E'],'Master Yi':['Q','E','W'],'Miss Fortune':['Q','W','E'],
+  'Mordekaiser':['E','Q','W'],'Morgana':['Q','W','E'],'Nami':['W','Q','E'],'Nasus':['Q','W','E'],
+  'Nautilus':['Q','E','W'],'Neeko':['Q','E','W'],'Nidalee':['Q','W','E'],'Nilah':['E','Q','W'],
+  'Nocturne':['Q','E','W'],'Nunu & Willump':['E','Q','W'],'Olaf':['Q','E','W'],'Orianna':['Q','W','E'],
+  'Ornn':['Q','E','W'],'Pantheon':['Q','E','W'],'Poppy':['Q','W','E'],'Pyke':['Q','E','W'],
+  'Qiyana':['Q','E','W'],'Quinn':['Q','E','W'],"Rek'Sai":['Q','E','W'],'Rell':['W','Q','E'],
+  'Renata Glasc':['W','Q','E'],'Renekton':['Q','E','W'],'Rengar':['Q','W','E'],'Riven':['Q','E','W'],
+  'Rumble':['Q','E','W'],'Ryze':['W','E','Q'],'Samira':['Q','E','W'],'Sejuani':['Q','E','W'],
+  'Senna':['Q','W','E'],'Seraphine':['W','Q','E'],'Sett':['W','Q','E'],'Shaco':['Q','E','W'],
+  'Shen':['Q','E','W'],'Shyvana':['E','Q','W'],'Singed':['E','W','Q'],'Sion':['Q','E','W'],
+  'Sivir':['Q','W','E'],'Skarner':['Q','E','W'],'Sona':['Q','W','E'],'Soraka':['Q','W','E'],
+  'Swain':['Q','W','E'],'Sylas':['Q','E','W'],'Syndra':['Q','E','W'],'Tahm Kench':['Q','W','E'],
+  'Taliyah':['Q','W','E'],'Talon':['Q','W','E'],'Taric':['W','Q','E'],'Teemo':['E','Q','W'],
+  'Thresh':['Q','E','W'],'Tristana':['Q','E','W'],'Trundle':['Q','E','W'],'Tryndamere':['Q','W','E'],
+  'Twisted Fate':['Q','W','E'],'Twitch':['E','Q','W'],'Udyr':['Q','E','W'],'Urgot':['Q','W','E'],
+  'Varus':['Q','E','W'],'Vayne':['Q','E','W'],'Veigar':['Q','E','W'],"Vel'Koz":['Q','W','E'],
+  'Vex':['Q','W','E'],'Vi':['E','Q','W'],'Viego':['Q','W','E'],'Viktor':['E','Q','W'],
+  'Vladimir':['Q','E','W'],'Volibear':['E','Q','W'],'Warwick':['Q','E','W'],'Wukong':['Q','W','E'],
+  'Xayah':['E','Q','W'],'Xerath':['Q','W','E'],'Xin Zhao':['Q','E','W'],'Yasuo':['Q','E','W'],
+  'Yone':['Q','E','W'],'Yorick':['Q','W','E'],'Yuumi':['Q','W','E'],'Zac':['E','Q','W'],
+  'Zed':['Q','W','E'],'Zeri':['W','E','Q'],'Ziggs':['Q','W','E'],'Zilean':['Q','W','E'],
+  'Zoe':['Q','E','W'],'Zyra':['E','Q','W'],
+};
+const DEFAULT_ORDER = ['Q','W','E'];
+
+// ─────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────
+const S = {
+  version: '',
+  champions: [],
+  champ: null,
+  champLevel: 1,
+  haste: 0,
+  skills: { Q:0, W:0, E:0, R:0 },
+  manual: false,
+  mainChamp: '',       // e.g. 'Kayle'
+  guideOpen: true,
+  runeData: null,      // runesReforged.json array
+  items: [],           // filtered items array [{id, name, icon, tags, gold, depth}]
+  spells: [],          // summoner spells array [{id, key, name, image}]
+};
+
+// ─────────────────────────────────────────────────────────
+// SAVED BUILDS  (embedded in file — do not edit manually)
+// ─────────────────────────────────────────────────────────
+// <<SAVED_BUILDS_START>>
+const SAVED_BUILDS = {
+  "Corki": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        1026,
+        3009
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Annie": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Smolder": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Yasuo": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerExhaust"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Aurora": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Akshan": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5001
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        1043,
+        1026,
+        3009
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Talon": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5001
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Qiyana": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5001
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Zac": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Vladimir": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Galio": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Tristana": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        1026,
+        3009
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "LeBlanc": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Lissandra": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1056
+      ],
+      "early": [
+        3009,
+        1026,
+        1043
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Zoe": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerBoost"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Neeko": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Yone": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerExhaust"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Hwei": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Veigar": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1056
+      ],
+      "early": [
+        3009,
+        1026,
+        1043
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Malzahar": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Kennen": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Katarina": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerExhaust"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Ryze": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Ahri": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1056
+      ],
+      "early": [
+        3009,
+        1026,
+        1043
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Akali": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Ziggs": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Cho'Gath": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Lux": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Mel": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Pantheon": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerExhaust"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5001
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Viktor": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Malphite": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Nasus": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerHaste"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5013
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Twisted Fate": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerBoost"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1056
+      ],
+      "early": [
+        3009,
+        1026,
+        1043
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Taliyah": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1056
+      ],
+      "early": [
+        3009,
+        1026,
+        1043
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Xerath": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Sylas": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5001
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Diana": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Cassiopeia": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1056
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Anivia": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1056
+      ],
+      "early": [
+        3009,
+        1026,
+        1043
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Fizz": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Jayce": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Kassadin": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerExhaust"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Ekko": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5001
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Aurelion Sol": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Gangplank": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Azir": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        1026,
+        3009
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Syndra": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Naafiri": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerExhaust"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Gragas": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Irelia": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5001
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Tryndamere": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerHaste"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5013
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Swain": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1054
+      ],
+      "early": [
+        1043,
+        3009,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  },
+  "Zed": {
+    "spells": [
+      "SummonerFlash",
+      "SummonerTeleport"
+    ],
+    "runes": {
+      "primaryTreeId": 8000,
+      "slots": [
+        8005,
+        9101,
+        9104,
+        8299
+      ],
+      "secondaryTreeId": 8200,
+      "secondary": [
+        8234,
+        8236
+      ],
+      "shards": [
+        5008,
+        5008,
+        5011
+      ]
+    },
+    "items": {
+      "start": [
+        2003,
+        1055
+      ],
+      "early": [
+        3009,
+        1043,
+        1026
+      ],
+      "core": [
+        3115,
+        2510,
+        3089
+      ],
+      "last": [
+        3135,
+        3102,
+        3157
+      ]
+    }
+  }
+};
+// <<SAVED_BUILDS_END>>
+
+// ─────────────────────────────────────────────────────────
+// EXPORT TO FILE
+// ─────────────────────────────────────────────────────────
+
+// Cache the raw HTML at page-load time (best quality copy).
+// Falls back to document.documentElement.outerHTML so export NEVER needs the server.
+let _cachedHtml = null;
+(async function _cacheHtml() {
+  try {
+    _cachedHtml = await (await fetch(location.href + '?nocache=' + Date.now())).text();
+  } catch(e) { /* server not running or file:// — outerHTML fallback used instead */ }
+})();
+
+async function exportToFile() {
+  const btn = document.querySelector('.save-file-btn');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Saving…';
+  btn.classList.add('saving');
+  try {
+    // Merge file-embedded builds + all localStorage overrides
+    const allBuilds = Object.assign({}, SAVED_BUILDS);
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('kb2_')) {
+        const champName = key.slice(4);
+        try { allBuilds[champName] = JSON.parse(localStorage.getItem(key)); } catch(e) {}
+      }
+    }
+
+    // Primary: use server-fetched copy cached at startup (clean source formatting).
+    // Fallback: serialize live DOM — works offline, file://, or after server stops.
+    const html = _cachedHtml || ('<!DOCTYPE html>\n' + document.documentElement.outerHTML);
+
+    // Replace the SAVED_BUILDS block
+    const marker = /\/\/ <<SAVED_BUILDS_START>>[\s\S]*?\/\/ <<SAVED_BUILDS_END>>/;
+    const replacement = `// <<SAVED_BUILDS_START>>\nconst SAVED_BUILDS = ${JSON.stringify(allBuilds, null, 2)};\n// <<SAVED_BUILDS_END>>`;
+    if (!marker.test(html)) throw new Error('Marker not found — please reload and try again');
+    const updated = html.replace(marker, replacement);
+
+    // Download the updated file
+    const blob = new Blob([updated], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'index.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    btn.textContent = '✓ Saved!';
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('saving'); }, 2000);
+  } catch(e) {
+    btn.textContent = '✗ Error';
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('saving'); }, 2000);
+    console.error('exportToFile:', e);
+    alert('Save to File failed: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const ver = await (await fetch('https://ddragon.leagueoflegends.com/api/versions.json')).json();
+    S.version = ver[0];
+    const v = S.version;
+    // Fetch all champion full data, items, runes, summoner spells in parallel
+    // championFull.json contains complete spell/passive data for all champions in one request
+    const [fullChampData, itemData, runeData, spellData] = await Promise.all([
+      fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/championFull.json`).then(r=>r.json()),
+      fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/item.json`).then(r=>r.json()).catch(()=>null),
+      fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/runesReforged.json`).then(r=>r.json()).catch(()=>null),
+      fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/summoner.json`).then(r=>r.json()).catch(()=>null),
+    ]);
+    S.champCache = fullChampData.data; // full champion data (with spells/passive) keyed by id
+    S.champions = Object.values(fullChampData.data)
+      .map(c => ({ id: c.id, name: c.name }))
+      .sort((a,b) => a.name.localeCompare(b.name));
+    // Process rune data
+    if (runeData) S.runeData = runeData;
+    // Process items — filter for SR purchasable items
+    if (itemData) {
+      S.items = Object.entries(itemData.data)
+        .filter(([, it]) =>
+          it.maps?.['11'] === true &&
+          it.gold?.purchasable === true &&
+          !it.requiredChampion &&
+          it.inStore !== false
+        )
+        .map(([id, it]) => ({
+          id: parseInt(id),
+          name: it.name,
+          icon: it.image?.full,
+          tags: it.tags || [],
+          gold: it.gold?.total || 0,
+          depth: it.depth || 1,
+        }));
+    }
+    // Process summoner spells — keep only the 9 SR spells we want
+    const SR_SPELL_KEYS = ['SummonerFlash','SummonerTeleport','SummonerDot','SummonerHaste',
+      'SummonerBoost','SummonerExhaust','SummonerBarrier','SummonerHeal','SummonerSmite'];
+    if (spellData) {
+      S.spells = Object.values(spellData.data)
+        .filter(sp => SR_SPELL_KEYS.includes(sp.id))
+        .map(sp => ({ id: sp.id, name: sp.name, image: sp.image?.full }));
+      // Sort in our preferred order
+      S.spells.sort((a,b) => SR_SPELL_KEYS.indexOf(a.id) - SR_SPELL_KEYS.indexOf(b.id));
+    }
+    document.getElementById('loading-msg').classList.add('hidden');
+    const inp = document.getElementById('search-input');
+    inp.disabled = false;
+    inp.placeholder = 'Search for a champion…';
+    // Update main portrait if already selected
+    updateMainPortrait();
+  } catch(e) {
+    showError('Could not load champion data — check your internet connection.');
+    document.getElementById('loading-msg').textContent = 'Failed to load.';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// MAIN SELECTOR
+// ─────────────────────────────────────────────────────────
+const mainSelectEl = document.getElementById('main-select');
+const mainPortraitEl = document.getElementById('main-portrait');
+const mainHintEl = document.getElementById('main-hint');
+
+mainSelectEl.addEventListener('change', () => {
+  S.mainChamp = mainSelectEl.value;
+  updateMainPortrait();
+  if (S.champ) renderGuidePanel();
+});
+
+function updateMainPortrait() {
+  if (!S.mainChamp || !S.version) {
+    mainPortraitEl.classList.add('hidden-img');
+    mainHintEl.textContent = 'Select your main to see matchup tips vs your opponent';
+    return;
+  }
+  const guide = GUIDES[S.mainChamp];
+  if (!guide) return;
+  mainPortraitEl.src = `https://ddragon.leagueoflegends.com/cdn/${S.version}/img/champion/${guide.champId}.png`;
+  mainPortraitEl.classList.remove('hidden-img');
+  mainHintEl.textContent = `${S.mainChamp} (${guide.role}) guide will appear below when you search an opponent`;
+}
+
+// ─────────────────────────────────────────────────────────
+// SEARCH
+// ─────────────────────────────────────────────────────────
+let dropIdx = -1;
+const searchEl = document.getElementById('search-input');
+const dropEl   = document.getElementById('search-dropdown');
+
+searchEl.addEventListener('input', () => {
+  const q = searchEl.value.trim().toLowerCase();
+  if (!q) { hideDrop(); return; }
+  const hits = S.champions.filter(c => c.name.toLowerCase().includes(q)).slice(0, 12);
+  if (!hits.length) { hideDrop(); return; }
+  renderDrop(hits);
+});
+
+searchEl.addEventListener('keydown', e => {
+  const items = [...dropEl.querySelectorAll('.dropdown-item')];
+  if (e.key === 'ArrowDown')  { e.preventDefault(); dropIdx = Math.min(dropIdx+1, items.length-1); highlightDrop(items); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); dropIdx = Math.max(dropIdx-1, 0); highlightDrop(items); }
+  else if (e.key === 'Enter')  { if (items[dropIdx]) items[dropIdx].click(); }
+  else if (e.key === 'Escape') hideDrop();
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrapper')) hideDrop();
+});
+
+function renderDrop(champs) {
+  dropIdx = -1;
+  dropEl.innerHTML = champs.map(c => `
+    <div class="dropdown-item" data-id="${c.id}" data-name="${esc(c.name)}">
+      <img src="https://ddragon.leagueoflegends.com/cdn/${S.version}/img/champion/${c.id}.png" loading="lazy" alt="">
+      <span>${c.name}</span>
+    </div>`).join('');
+  dropEl.querySelectorAll('.dropdown-item').forEach(el =>
+    el.addEventListener('click', () => pickChamp(el.dataset.id, el.dataset.name))
+  );
+  dropEl.classList.remove('hidden');
+}
+
+function highlightDrop(items) {
+  items.forEach((el,i) => el.classList.toggle('active', i === dropIdx));
+  if (items[dropIdx]) items[dropIdx].scrollIntoView({ block:'nearest' });
+}
+
+function hideDrop() { dropEl.classList.add('hidden'); dropIdx = -1; }
+
+// ─────────────────────────────────────────────────────────
+// PICK CHAMPION
+// ─────────────────────────────────────────────────────────
+let _pickAbort = null; // AbortController for in-flight pickChamp fetch
+
+async function pickChamp(id, name) {
+  // Cancel any previous in-flight fetch
+  if (_pickAbort) { _pickAbort.abort(); }
+  _pickAbort = new AbortController();
+  const signal = _pickAbort.signal;
+
+  searchEl.value = name;
+  hideDrop();
+  document.getElementById('champion-section').classList.add('hidden');
+
+  // Check cache first
+  if (S.champCache && S.champCache[id]) {
+    _applyChamp(S.champCache[id]);
+    return;
+  }
+
+  document.getElementById('loading-msg').textContent = `Loading ${name}…`;
+  document.getElementById('loading-msg').classList.remove('hidden');
+  try {
+    const data = await (await fetch(
+      `https://ddragon.leagueoflegends.com/cdn/${S.version}/data/en_US/champion/${id}.json`,
+      { signal }
+    )).json();
+    if (signal.aborted) return;
+    const champObj = data.data[id];
+    if (!S.champCache) S.champCache = {};
+    S.champCache[id] = champObj;       // cache for next time
+    _applyChamp(champObj);
+  } catch(e) {
+    if (signal.aborted) return;        // intentional cancel, ignore
+    showError('Failed to load that champion — please try again.');
+    document.getElementById('loading-msg').classList.add('hidden');
+  }
+}
+
+function _applyChamp(champObj) {
+  S.champ      = champObj;
+  S.champLevel = 1;
+  S.haste      = 0;
+  S.manual     = false;
+  _buildEditing = false;
+  _buildDraft   = null;
+  _activeItemSlot = null;
+  S.skills     = autoDistribute(1, S.champ.name);
+  document.getElementById('haste-input').value = 0;
+  document.getElementById('loading-msg').classList.add('hidden');
+  render();
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTO SKILL DISTRIBUTION
+// ─────────────────────────────────────────────────────────
+function autoDistribute(level, champName) {
+  const order = LEVELING[champName] || DEFAULT_ORDER;
+  const [p1,p2,p3] = order;
+  const sk = { Q:0, W:0, E:0, R:0 };
+  for (let lv = 1; lv <= level; lv++) {
+    if (lv === 6 || lv === 11 || lv === 16)  sk.R++;
+    else if (lv === 1) sk[p1]++;
+    else if (lv === 2) sk[p2]++;
+    else if (lv === 3) sk[p3]++;
+    else {
+      if      (sk[p1] < 5) sk[p1]++;
+      else if (sk[p2] < 5) sk[p2]++;
+      else if (sk[p3] < 5) sk[p3]++;
+    }
+  }
+  return sk;
+}
+
+// ─────────────────────────────────────────────────────────
+// COOLDOWN MATH
+// ─────────────────────────────────────────────────────────
+function effectiveCd(base, haste) { return haste > 0 ? base * 100 / (100 + haste) : base; }
+function cdrPct(haste) { return haste > 0 ? (haste / (100 + haste) * 100).toFixed(1) : 0; }
+function fmtCd(s) {
+  if (s === 0) return '0';
+  if (s < 60) return (+s.toFixed(1)).toString();
+  return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}`;
+}
+
+// ─────────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────────
+function render() {
+  const c = S.champ;
+  document.getElementById('champ-name').textContent  = c.name;
+  document.getElementById('champ-title').textContent = c.title;
+  document.getElementById('champ-portrait').src =
+    `https://ddragon.leagueoflegends.com/cdn/${S.version}/img/champion/${c.id}.png`;
+  const order = LEVELING[c.name] || DEFAULT_ORDER;
+  document.getElementById('skill-priority').innerHTML =
+    `Skill priority: <span>${order[0]} › ${order[1]} › ${order[2]}</span>`;
+  document.getElementById('level-display').textContent = S.champLevel;
+  const cdr = cdrPct(S.haste);
+  const badge = document.getElementById('cdr-badge');
+  badge.textContent = cdr > 0 ? `${cdr}% CDR` : '0% CDR';
+  badge.classList.toggle('zero', +cdr === 0);
+  document.getElementById('reset-btn').classList.toggle('hidden', !S.manual);
+  renderAbilities();
+  renderGuidePanel();
+  document.getElementById('champion-section').classList.remove('hidden');
+}
+
+function renderAbilities() {
+  const c = S.champ;
+  const abilities = [
+    { key:'P', data: c.passive,   isPassive: true  },
+    { key:'Q', data: c.spells[0], lv: S.skills.Q   },
+    { key:'W', data: c.spells[1], lv: S.skills.W   },
+    { key:'E', data: c.spells[2], lv: S.skills.E   },
+    { key:'R', data: c.spells[3], lv: S.skills.R   },
+  ];
+  document.getElementById('abilities-grid').innerHTML = abilities.map(a => cardHTML(a)).join('');
+  ['Q','W','E','R'].forEach(k => {
+    const max = k === 'R' ? 3 : 5;
+    document.getElementById(`btn-${k}-dn`)?.addEventListener('click', () => {
+      S.skills[k] = Math.max(0, S.skills[k] - 1);
+      S.manual = true;
+      renderAbilities();
+      document.getElementById('reset-btn').classList.remove('hidden');
+    });
+    document.getElementById(`btn-${k}-up`)?.addEventListener('click', () => {
+      S.skills[k] = Math.min(max, S.skills[k] + 1);
+      S.manual = true;
+      renderAbilities();
+      document.getElementById('reset-btn').classList.remove('hidden');
+    });
+  });
+}
+
+function cardHTML({ key, data, isPassive, lv }) {
+  const iconSrc = isPassive
+    ? `https://ddragon.leagueoflegends.com/cdn/${S.version}/img/passive/${data.image.full}`
+    : `https://ddragon.leagueoflegends.com/cdn/${S.version}/img/spell/${data.image.full}`;
+  const fallback = `this.style.background='#0E1E3C';this.src='';`;
+  let body = '';
+  if (isPassive) {
+    body = `<div class="passive-note">Passive — no cooldown</div>`;
+  } else {
+    const cds = data.cooldown || [];
+    const max = key === 'R' ? 3 : 5;
+    const dots = Array.from({length: max}, (_,i) =>
+      `<div class="dot ${i < lv ? 'filled' : ''}"></div>`).join('');
+    let ranksHTML = '';
+    if (cds.length > 0) {
+      ranksHTML = '<div class="cd-ranks">';
+      cds.forEach((base, i) => {
+        const val   = fmtCd(effectiveCd(base, S.haste));
+        const isCur = i === lv - 1;
+        ranksHTML += `<span class="cd-rank ${isCur ? 'current' + (S.haste > 0 ? ' with-haste' : '') : ''}">${val}s</span>`;
+        if (i < cds.length - 1) ranksHTML += `<span class="cd-arrow">›</span>`;
+      });
+      ranksHTML += '</div>';
+      if (S.haste > 0 && lv > 0) {
+        const base = cds[Math.min(lv-1, cds.length-1)];
+        const eff  = effectiveCd(base, S.haste);
+        ranksHTML += `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:3px;">
+          Base at rank ${lv}: <b style="color:var(--text)">${fmtCd(base)}s</b>
+          &nbsp;→&nbsp; Effective: <b style="color:var(--blue)">${fmtCd(eff)}s</b>
+          &nbsp;(${cdrPct(S.haste)}% CDR)
+        </div>`;
+      }
+    } else {
+      ranksHTML = `<span class="not-leveled-note">No cooldown data</span>`;
+    }
+    body = `
+      <div class="level-dots">${dots}</div>
+      ${lv === 0 ? '<span class="not-leveled-note">Not leveled yet</span>' : ranksHTML}
+    `;
+  }
+  const levelCtl = !isPassive ? `
+    <div class="ability-level-ctl">
+      <button class="ability-btn" id="btn-${key}-dn">−</button>
+      <div class="ability-lv-badge">${lv}/${key==='R'?3:5}</div>
+      <button class="ability-btn" id="btn-${key}-up">+</button>
+    </div>` : '';
+  return `
+    <div class="ability-card ${!isPassive && lv === 0 ? 'unleveled' : ''}">
+      <div class="ability-icon-wrap">
+        <div class="key-badge">${key}</div>
+        <img class="ability-icon" src="${iconSrc}" alt="${key}" onerror="${fallback}">
+      </div>
+      <div class="ability-content">
+        <div class="ability-name">${data.name}</div>
+        ${body}
+      </div>
+      ${levelCtl}
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// GUIDE PANEL
+// ─────────────────────────────────────────────────────────
+// ── Per-matchup build data — extracted directly from spreadsheet images ──────
+// Format: [summ2, start2, earlyKey]
+// summ2:    'Teleport' | 'Ignite' | 'Ghost' | 'Cleanse'
+// start2:   'shield' (Doran's Shield) | 'nmm' (Null-Magic Mantle) | 'cull' (Cull)
+// earlyKey: 'SBR' | 'SRB' | 'RSB' | 'RBS'
+//           S=Sorcerer's Shoes, B=Blasting Wand, R=Recurve Bow
+const MATCHUP_BUILD = {
+  'Ahri':         ['Teleport','nmm',   'SBR'],
+  'Akali':        ['Teleport','shield','SRB'],
+  'Akshan':       ['Teleport','cull',  'RBS'],
+  'Anivia':       ['Teleport','nmm',   'SBR'],
+  'Annie':        ['Teleport','shield','SRB'],
+  'Aurelion Sol': ['Teleport','shield','RSB'],
+  'Aurora':       ['Teleport','shield','SRB'],
+  'Azir':         ['Teleport','shield','RBS'],
+  'Cassiopeia':   ['Teleport','nmm',   'RSB'],
+  "Cho'Gath":     ['Teleport','cull',  'SRB'],
+  'Corki':        ['Teleport','shield','RBS'],
+  'Diana':        ['Teleport','cull',  'RSB'],
+  'Ekko':         ['Teleport','shield','RSB'],
+  'Fizz':         ['Teleport','cull',  'RSB'],
+  'Galio':        ['Teleport','cull',  'SRB'],
+  'Gangplank':    ['Teleport','shield','RSB'],
+  'Gragas':       ['Teleport','cull',  'SRB'],
+  'Hwei':         ['Teleport','shield','SRB'],
+  'Irelia':       ['Teleport','cull',  'RSB'],
+  'Jayce':        ['Teleport','shield','RSB'],
+  'Karma':        ['Teleport','shield','SRB'],
+  'Kassadin':     ['Ignite',  'cull',  'RSB'],
+  'Katarina':     ['Ignite',  'shield','RSB'],
+  'Kennen':       ['Teleport','shield','SRB'],
+  'LeBlanc':      ['Teleport','shield','SRB'],
+  'Lissandra':    ['Teleport','nmm',   'SBR'],
+  'Lux':          ['Teleport','shield','SRB'],
+  'Malphite':     ['Teleport','shield','SRB'],
+  'Malzahar':     ['Teleport','shield','SRB'],
+  'Mel':          ['Teleport','shield','SRB'],
+  'Naafiri':      ['Ignite',  'cull',  'SRB'],
+  'Nasus':        ['Ghost',   'cull',  'SRB'],
+  'Neeko':        ['Teleport','shield','SRB'],
+  'Pantheon':     ['Ignite',  'cull',  'RSB'],
+  'Qiyana':       ['Teleport','shield','RSB'],
+  'Ryze':         ['Teleport','shield','RSB'],
+  'Smolder':      ['Teleport','shield','RSB'],
+  'Swain':        ['Teleport','shield','RSB'],
+  'Sylas':        ['Teleport','cull',  'RSB'],
+  'Syndra':       ['Teleport','shield','SRB'],
+  'Taliyah':      ['Teleport','nmm',   'SBR'],
+  'Talon':        ['Teleport','cull',  'SRB'],
+  'Tristana':     ['Teleport','shield','RBS'],
+  'Tryndamere':   ['Ghost',   'cull',  'SRB'],
+  'Twisted Fate': ['Cleanse', 'nmm',   'SBR'],
+  'Veigar':       ['Teleport','nmm',   'SBR'],
+  "Vel'Koz":      ['Teleport','shield','SBR'],
+  'Vex':          ['Teleport','shield','SBR'],
+  'Viktor':       ['Teleport','shield','SRB'],
+  'Vladimir':     ['Teleport','shield','SRB'],
+  'Xerath':       ['Teleport','shield','SRB'],
+  'Yasuo':        ['Ignite',  'cull',  'SRB'],
+  'Yone':         ['Ignite',  'cull',  'SRB'],
+  'Zac':          ['Teleport','cull',  'SRB'],
+  'Zed':          ['Teleport','cull',  'SRB'],
+  'Ziggs':        ['Teleport','shield','SRB'],
+  'Zoe':          ['Cleanse', 'shield','SRB'],
+};
+
+// ── Stat shards (hardcoded) ───────────────────────────────────────────────────
+const SHARD_ROWS = [
+  // Row 1 — Offense
+  [{id:5008, name:'+9 Adaptive Force',          path:'perk-images/StatMods/StatModsAdaptiveForceIcon.png'},
+   {id:5005, name:'+10% Attack Speed',          path:'perk-images/StatMods/StatModsAttackSpeedIcon.png'},
+   {id:5007, name:'+8 Ability Haste',           path:'perk-images/StatMods/StatModsCDRScalingIcon.png'}],
+  // Row 2 — Flex
+  [{id:5008, name:'+9 Adaptive Force',          path:'perk-images/StatMods/StatModsAdaptiveForceIcon.png'},
+   {id:5010, name:'+2.5% Move Speed',           path:'perk-images/StatMods/StatModsMovementSpeedIcon.png'},
+   {id:5011, name:'+10-180 HP (scaling)',        path:'perk-images/StatMods/StatModsHealthPlusIcon.png'}],
+  // Row 3 — Defense
+  [{id:5001, name:'+65 Health',                 path:'perk-images/StatMods/StatModsHealthScalingIcon.png'},
+   {id:5013, name:'+15% Tenacity & Slow Resist',path:'perk-images/StatMods/StatModsTenacityIcon.png'},
+   {id:5011, name:'+10-180 HP (scaling)',        path:'perk-images/StatMods/StatModsHealthPlusIcon.png'}],
+];
+
+// ── Build persistence (kb2_ localStorage + file-embedded SAVED_BUILDS) ────────
+function loadBuildOverride(name) {
+  // localStorage takes priority (most recent edits this session)
+  try { const s = localStorage.getItem('kb2_' + name); if (s) return JSON.parse(s); } catch(e) {}
+  // Fall back to builds embedded in the file
+  return SAVED_BUILDS[name] || null;
+}
+function saveBuildOverride(name, data) {
+  try { localStorage.setItem('kb2_' + name, JSON.stringify(data)); } catch(e) {}
+}
+function clearBuildOverride(name) {
+  try { localStorage.removeItem('kb2_' + name); } catch(e) {}
+}
+
+// Build a default full-format build from MATCHUP_BUILD data
+function defaultFullBuild(champName) {
+  const d = MATCHUP_BUILD[champName] || ['Teleport','shield','SRB'];
+  const [summ2Name, startItem, earlyKey] = d;
+  // Map summ2 name to DDragon key
+  const spellNameMap = {
+    'Teleport':'SummonerTeleport','Ghost':'SummonerHaste','Ignite':'SummonerDot',
+    'Cleanse':'SummonerBoost','Exhaust':'SummonerExhaust','Barrier':'SummonerBarrier',
+  };
+  // Start items: 2033=Corrupting Pot always first, then start2
+  const start2Map = { shield:1054, nmm:1033, cull:3865 };
+  // Early keys: S=3020(SorcShoes), B=1026(BlastWand), R=1043(RecurveBow)
+  const earlyMap = { S:3020, B:1026, R:1043 };
+  const earlyIds = earlyKey.split('').map(k => earlyMap[k]).filter(Boolean);
+  // Look up rune IDs from S.runeData if available
+  let primaryTreeId = 8000, slots = [8005, 9101, 9104, 8299];
+  let secondaryTreeId = 8200, secondary = [8234, 8236];
+  if (S.runeData) {
+    const precTree = S.runeData.find(t => t.id === 8000);
+    const sorTree  = S.runeData.find(t => t.id === 8200);
+    if (precTree) {
+      primaryTreeId = precTree.id;
+      const ks  = precTree.slots[0]?.runes?.find(r => r.name === 'Press the Attack');
+      const r1  = precTree.slots[1]?.runes?.find(r => r.name === 'Absorb Life');
+      const r2  = precTree.slots[2]?.runes?.find(r => r.name === 'Legend: Alacrity');
+      const r3  = precTree.slots[3]?.runes?.find(r => r.name === 'Last Stand');
+      slots = [ks?.id||8005, r1?.id||9101, r2?.id||9104, r3?.id||8299];
+    }
+    if (sorTree) {
+      secondaryTreeId = sorTree.id;
+      const ce = sorTree.slots[1]?.runes?.find(r => r.name === 'Celerity');
+      const gs = sorTree.slots[3]?.runes?.find(r => r.name === 'Gathering Storm');
+      secondary = [ce?.id||8234, gs?.id||8236];
+    }
+  }
+  return {
+    spells: ['SummonerFlash', 'SummonerTeleport'],
+    runes: {
+      primaryTreeId,
+      slots,
+      secondaryTreeId,
+      secondary,
+      shards: [5008, 5008, 5011], // Adaptive Force / Adaptive Force / Health Scaling
+    },
+    items: {
+      start: [2003, 1054],          // Health Potion + Doran's Shield
+      early: [3009, 1026, 1043],    // Boots of Swiftness + Blasting Wand + Recurve Bow
+      core:  [3115, 2510, 3089],    // Nashor's Tooth + Dusk and Dawn + Rabadon's Deathcap
+      last:  [3135, 3102, 3157],    // Void Staff + Banshee's Veil + Zhonya's Hourglass
+    },
+  };
+}
+
+function getFullBuild(champName) {
+  const override = loadBuildOverride(champName);
+  if (override) return override;
+  return defaultFullBuild(champName);
+}
+
+// ── Build edit state ──────────────────────────────────────────────────────────
+let _buildEditing = false;
+let _buildDraft   = null;
+let _activeItemSlot = null; // {phase, idx}
+let _itemPickerTab = 'All';
+let _itemPickerSearch = '';
+
+window.startBuildEdit = function() {
+  _buildEditing = true;
+  _buildDraft = JSON.parse(JSON.stringify(getFullBuild(S.champ.name)));
+  _activeItemSlot = null;
+  _itemPickerSearch = '';
+  _itemPickerTab = 'All';
+  renderGuidePanel();
+};
+window.cancelBuildEdit = function() {
+  _buildEditing = false;
+  _buildDraft = null;
+  _activeItemSlot = null;
+  renderGuidePanel();
+};
+window.saveBuildEdit = function() {
+  saveBuildOverride(S.champ.name, _buildDraft);
+  _buildEditing = false;
+  _buildDraft = null;
+  _activeItemSlot = null;
+  renderGuidePanel();
+};
+window.resetBuildEdit = function() {
+  clearBuildOverride(S.champ.name);
+  _buildEditing = false;
+  _buildDraft = null;
+  _activeItemSlot = null;
+  renderGuidePanel();
+};
+
+// Rune tree pickers
+window.setPrimaryTree = function(id) {
+  if (!_buildDraft) return;
+  _buildDraft.runes.primaryTreeId = id;
+  _buildDraft.runes.slots = [0,0,0,0];
+  if (_buildDraft.runes.secondaryTreeId === id) {
+    // Find a different secondary tree
+    const other = S.runeData?.find(t => t.id !== id);
+    _buildDraft.runes.secondaryTreeId = other ? other.id : 8200;
+    _buildDraft.runes.secondary = [];
+  }
+  renderGuidePanel();
+};
+window.setSecondaryTree = function(id) {
+  if (!_buildDraft) return;
+  if (id === _buildDraft.runes.primaryTreeId) return;
+  _buildDraft.runes.secondaryTreeId = id;
+  _buildDraft.runes.secondary = [];
+  renderGuidePanel();
+};
+window.setRuneSlot = function(idx, runeId) {
+  if (!_buildDraft) return;
+  _buildDraft.runes.slots[idx] = runeId;
+  renderGuidePanel();
+};
+window.toggleSecondaryRune = function(runeId, rowIdx) {
+  if (!_buildDraft) return;
+  const sec = _buildDraft.runes.secondary;
+  // Find which row each current selection is from
+  const tree = S.runeData?.find(t => t.id === _buildDraft.runes.secondaryTreeId);
+  const alreadyIdx = sec.indexOf(runeId);
+  if (alreadyIdx !== -1) {
+    sec.splice(alreadyIdx, 1);
+  } else {
+    // Remove any existing pick from same row
+    if (tree) {
+      const rowRunes = tree.slots[rowIdx]?.runes?.map(r=>r.id) || [];
+      const toRemove = sec.filter(id => rowRunes.includes(id));
+      toRemove.forEach(id => sec.splice(sec.indexOf(id), 1));
+    }
+    if (sec.length < 2) sec.push(runeId);
+  }
+  renderGuidePanel();
+};
+window.setShard = function(rowIdx, id) {
+  if (!_buildDraft) return;
+  _buildDraft.runes.shards[rowIdx] = id;
+  renderGuidePanel();
+};
+window.setSpell = function(spellKey) {
+  if (!_buildDraft) return;
+  const sp = _buildDraft.spells;
+  if (sp[0] === spellKey) { sp[0] = ''; }
+  else if (sp[1] === spellKey) { sp[1] = ''; }
+  else if (!sp[0]) { sp[0] = spellKey; }
+  else if (!sp[1]) { sp[1] = spellKey; }
+  else { sp[1] = spellKey; }
+  renderGuidePanel();
+};
+window.openItemSlot = function(phase, idx) {
+  if (_activeItemSlot && _activeItemSlot.phase === phase && _activeItemSlot.idx === idx) {
+    _activeItemSlot = null;
+  } else {
+    _activeItemSlot = { phase, idx };
+    _itemPickerSearch = '';
+    _itemPickerTab = 'All';
+  }
+  renderGuidePanel();
+};
+window.addItemSlot = function(phase) {
+  if (!_buildDraft) return;
+  const arr = _buildDraft.items[phase];
+  _activeItemSlot = { phase, idx: arr.length };
+  _itemPickerSearch = '';
+  _itemPickerTab = 'All';
+  renderGuidePanel();
+};
+window.removeItem = function(phase, idx) {
+  if (!_buildDraft) return;
+  _buildDraft.items[phase].splice(idx, 1);
+  if (_activeItemSlot && _activeItemSlot.phase === phase && _activeItemSlot.idx >= idx) {
+    _activeItemSlot = null;
+  }
+  renderGuidePanel();
+};
+window.pickItem = function(id) {
+  if (!_buildDraft || !_activeItemSlot) return;
+  const { phase, idx } = _activeItemSlot;
+  const arr = _buildDraft.items[phase];
+  if (idx >= arr.length) arr.push(id);
+  else arr[idx] = id;
+  _activeItemSlot = null;
+  renderGuidePanel();
+};
+window.filterItems = function(val) {
+  _itemPickerSearch = val;
+  const el = document.getElementById('be-picker-grid');
+  if (el) el.innerHTML = buildPickerGridHTML();
+};
+window.setItemTab = function(tab) {
+  _itemPickerTab = tab;
+  const el = document.getElementById('be-picker-grid');
+  const tabs = document.querySelectorAll('.be-tab-btn');
+  tabs.forEach(t => t.classList.toggle('sel', t.textContent.trim() === tab));
+  if (el) el.innerHTML = buildPickerGridHTML();
+};
+
+function renderGuidePanel() {
+  const panel = document.getElementById('guide-panel');
+  if (!S.mainChamp || !S.champ) { panel.classList.add('hidden'); return; }
+  const guide = GUIDES[S.mainChamp];
+  if (!guide) { panel.classList.add('hidden'); return; }
+  const matchup = guide.matchups[S.champ.name];
+  if (!matchup) { panel.classList.add('hidden'); return; }
+
+  // Header
+  document.getElementById('guide-main-icon').src =
+    `https://ddragon.leagueoflegends.com/cdn/${S.version}/img/champion/${guide.champId}.png`;
+  document.getElementById('guide-header-title').textContent =
+    `${S.mainChamp} (${guide.role}) vs ${S.champ.name}`;
+  document.getElementById('guide-header-sub').textContent = 'Matchup Guide — from your friend\'s spreadsheet';
+  document.getElementById('guide-toggle').classList.toggle('collapsed', !S.guideOpen);
+
+  // Body
+  const body = document.getElementById('guide-body');
+  body.style.display = S.guideOpen ? 'block' : 'none';
+
+  const diff = matchup.difficulty;
+  const { cls, label } = diffInfo(diff);
+
+  // Build difficulty bar (10 segments)
+  const barSegs = Array.from({length: 10}, (_,i) => {
+    const filled = diff !== null && i < diff;
+    return `<div class="diff-seg ${filled ? 'filled-' + cls : ''}"></div>`;
+  }).join('');
+
+  const diffDisplay = diff !== null
+    ? `${barSegs}<span class="diff-number">${diff}/10</span><span class="diff-badge ${cls}">${label}</span>`
+    : `${barSegs}<span class="diff-badge prog">In Progress</span>`;
+
+  // ── Build / Runes / Summoner Spells ────────────────────────────────────────
+  const v = S.version;
+  const itemUrl  = id   => `https://ddragon.leagueoflegends.com/cdn/${v}/img/item/${id}.png`;
+  const spellUrl = key  => `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${key}.png`;
+  const runeUrl  = path => `https://ddragon.leagueoflegends.com/cdn/img/${path}`;
+
+  const hasOverride = !!loadBuildOverride(S.champ.name);
+  const build = _buildEditing ? _buildDraft : getFullBuild(S.champ.name);
+
+  // ── Helper: find rune by id from runeData ──────────────────────────────────
+  function findRune(id) {
+    if (!S.runeData) return null;
+    for (const tree of S.runeData) {
+      for (const slot of tree.slots) {
+        for (const rune of slot.runes) {
+          if (rune.id === id) return { ...rune, treeId: tree.id };
+        }
+      }
+    }
+    return null;
+  }
+  function findTree(id) {
+    return S.runeData?.find(t => t.id === id) || null;
+  }
+  function findSpell(key) {
+    return S.spells.find(s => s.id === key) || null;
+  }
+  function itemName(id) {
+    const it = S.items.find(i => i.id === id);
+    return it ? it.name : String(id);
+  }
+
+  // ── Build picker grid HTML (for item picker) ───────────────────────────────
+  window.buildPickerGridHTML = function() {
+    let items = S.items;
+    // Tab filter
+    const TAB_TAGS = {
+      'Starter': ['Lane', 'GoldPer'],
+      'Boots': ['Boots'],
+      'Basic': [],
+      'Epic': [],
+      'Legendary': [],
+    };
+    if (_itemPickerTab === 'Starter') {
+      items = items.filter(it => it.tags.some(t => ['Lane','GoldPer','Consumable'].includes(t)) || it.depth === 1);
+    } else if (_itemPickerTab === 'Boots') {
+      items = items.filter(it => it.tags.includes('Boots'));
+    } else if (_itemPickerTab === 'Basic') {
+      items = items.filter(it => it.depth === 1 && !it.tags.includes('Boots'));
+    } else if (_itemPickerTab === 'Epic') {
+      items = items.filter(it => it.depth === 2);
+    } else if (_itemPickerTab === 'Legendary') {
+      items = items.filter(it => it.depth === 3);
+    }
+    // Search filter
+    if (_itemPickerSearch) {
+      const q = _itemPickerSearch.toLowerCase();
+      items = items.filter(it => it.name.toLowerCase().includes(q));
+    }
+    // Sort by gold asc, limit 200
+    items = items.slice().sort((a,b) => a.gold - b.gold).slice(0, 200);
+    return items.map(it =>
+      `<img class="be-pick-item" loading="lazy" src="${itemUrl(it.id)}" alt="${esc(it.name)}" title="${esc(it.name)}" onclick="pickItem(${it.id})" onerror="this.style.display='none'">`
+    ).join('');
+  };
+
+  // ── Edit-mode builder helpers ──────────────────────────────────────────────
+  function buildRuneEditorHTML(d) {
+    if (!S.runeData) return '<div style="color:var(--text-dim);font-size:0.8rem">Loading rune data…</div>';
+    const primaryTree = findTree(d.runes.primaryTreeId);
+    const secondaryTree = findTree(d.runes.secondaryTreeId);
+
+    // Tree selection row (primary)
+    const primaryTreeRow = S.runeData.map(tree => {
+      const isSel = tree.id === d.runes.primaryTreeId;
+      return `<button class="be-tree-btn ${isSel ? 'sel' : ''}" onclick="setPrimaryTree(${tree.id})" title="${esc(tree.name)}">
+        <img loading="lazy" src="${runeUrl(tree.icon)}" alt="${esc(tree.name)}" onerror="this.parentElement.style.display='none'">
+      </button>`;
+    }).join('');
+
+    // Primary rune rows
+    let primaryRuneRowsHTML = '';
+    if (primaryTree) {
+      primaryTree.slots.forEach((slot, slotIdx) => {
+        const isKeystone = slotIdx === 0;
+        const rowHTML = slot.runes.map(rune => {
+          const isSel = d.runes.slots[slotIdx] === rune.id;
+          return `<div class="be-rune-wrap">
+            <button class="be-rune-btn ${isKeystone ? 'keystone' : ''} ${isSel ? 'sel' : ''}"
+              onclick="setRuneSlot(${slotIdx},${rune.id})" title="${esc(rune.name)}">
+              <img loading="lazy" src="${runeUrl(rune.icon)}" alt="${esc(rune.name)}" onerror="this.parentElement.style.display='none'">
+            </button>
+            <div class="be-rune-name">${esc(rune.name)}</div>
+          </div>`;
+        }).join('');
+        primaryRuneRowsHTML += `<div class="be-rune-row">${rowHTML}</div>`;
+      });
+    }
+
+    // Secondary tree row (excluding primary)
+    const secondaryTreeRow = S.runeData.map(tree => {
+      const isSel = tree.id === d.runes.secondaryTreeId;
+      const isDim = tree.id === d.runes.primaryTreeId;
+      return `<button class="be-tree-btn ${isSel ? 'sel' : ''} ${isDim ? 'dim' : ''}"
+        onclick="setSecondaryTree(${tree.id})" title="${esc(tree.name)}">
+        <img loading="lazy" src="${runeUrl(tree.icon)}" alt="${esc(tree.name)}" onerror="this.parentElement.style.display='none'">
+      </button>`;
+    }).join('');
+
+    // Secondary rune rows (no keystone row — rows 1-3 only)
+    let secondaryRuneRowsHTML = '';
+    if (secondaryTree) {
+      secondaryTree.slots.slice(1).forEach((slot, rowOffset) => {
+        const rowIdx = rowOffset + 1; // slot index in the tree
+        const rowHTML = slot.runes.map(rune => {
+          const isSel = d.runes.secondary.includes(rune.id);
+          return `<div class="be-rune-wrap">
+            <button class="be-rune-btn ${isSel ? 'sel2' : ''}"
+              onclick="toggleSecondaryRune(${rune.id},${rowIdx})" title="${esc(rune.name)}">
+              <img loading="lazy" src="${runeUrl(rune.icon)}" alt="${esc(rune.name)}" onerror="this.parentElement.style.display='none'">
+            </button>
+            <div class="be-rune-name">${esc(rune.name)}</div>
+          </div>`;
+        }).join('');
+        secondaryRuneRowsHTML += `<div class="be-rune-row">${rowHTML}</div>`;
+      });
+    }
+
+    // Stat shards
+    const shardRowsHTML = SHARD_ROWS.map((row, rowIdx) => {
+      const btns = row.map(shard => {
+        const isSel = d.runes.shards[rowIdx] === shard.id;
+        return `<button class="be-shard-btn ${isSel ? 'sel' : ''}" onclick="setShard(${rowIdx},${shard.id})" title="${esc(shard.name)}">
+          <img src="https://ddragon.leagueoflegends.com/cdn/img/${shard.path}" alt="${esc(shard.name)}" onerror="this.parentElement.style.display='none'">
+        </button>`;
+      }).join('');
+      return `<div class="be-shard-row">${btns}</div>`;
+    }).join('');
+
+    return `
+      <div class="be-section">
+        <div class="be-section-label">Primary Tree</div>
+        <div class="be-tree-row">${primaryTreeRow}
+          <span class="be-tree-name">${primaryTree ? esc(primaryTree.name) : ''}</span>
+        </div>
+        ${primaryRuneRowsHTML}
+      </div>
+      <div class="be-sep"></div>
+      <div class="be-section">
+        <div class="be-section-label">Secondary Tree</div>
+        <div class="be-tree-row">${secondaryTreeRow}
+          <span class="be-tree-name">${secondaryTree ? esc(secondaryTree.name) : ''}</span>
+        </div>
+        ${secondaryRuneRowsHTML}
+      </div>
+      <div class="be-sep"></div>
+      <div class="be-section">
+        <div class="be-section-label">Stat Shards</div>
+        ${shardRowsHTML}
+      </div>`;
+  }
+
+  function buildSpellEditorHTML(d) {
+    if (!S.spells.length) return '<div style="color:var(--text-dim);font-size:0.8rem">Loading spells…</div>';
+    return `<div class="be-spell-grid">` + S.spells.map(sp => {
+      const isSel1 = d.spells[0] === sp.id;
+      const isSel2 = d.spells[1] === sp.id;
+      const badge = isSel1
+        ? `<span class="be-spell-badge b1">1</span>`
+        : isSel2
+        ? `<span class="be-spell-badge b2">2</span>` : '';
+      return `<button class="be-spell-btn ${isSel1 ? 'sel1' : isSel2 ? 'sel2' : ''}"
+        onclick="setSpell('${sp.id}')" title="${esc(sp.name)}">
+        <img src="${spellUrl(sp.id)}" alt="${esc(sp.name)}" onerror="this.parentElement.style.display='none'">
+        ${badge}
+      </button>`;
+    }).join('') + `</div>`;
+  }
+
+  function buildItemPhaseHTML(d) {
+    const PHASES = [
+      { key:'start', label:'Start' },
+      { key:'early', label:'Early' },
+      { key:'core',  label:'Core' },
+      { key:'last',  label:'Last Item' },
+    ];
+    let html = '';
+    for (const { key, label } of PHASES) {
+      const ids = d.items[key] || [];
+      const slots = ids.map((id, idx) => {
+        const isActive = _activeItemSlot && _activeItemSlot.phase === key && _activeItemSlot.idx === idx;
+        return `<div class="be-item-slot ${isActive ? 'active' : ''}" onclick="openItemSlot('${key}',${idx})">
+          <img src="${itemUrl(id)}" alt="${esc(itemName(id))}" title="${esc(itemName(id))}" onerror="this.style.background='#0E1E3C';this.src=''">
+          <span class="be-item-x" onclick="event.stopPropagation();removeItem('${key}',${idx})">✕</span>
+        </div>`;
+      }).join('');
+      html += `<div class="be-phase">
+        <div class="be-phase-label">${label}</div>
+        <div class="be-item-row">
+          ${slots}
+          <button class="be-item-add" onclick="addItemSlot('${key}')" title="Add item">+</button>
+        </div>
+      </div>`;
+    }
+    // Item picker panel
+    const showPicker = !!_activeItemSlot;
+    if (showPicker) {
+      const TABS = ['All','Starter','Boots','Basic','Epic','Legendary'];
+      const tabBtns = TABS.map(t =>
+        `<button class="be-tab-btn ${_itemPickerTab === t ? 'sel' : ''}" onclick="setItemTab('${t}')">${t}</button>`
+      ).join('');
+      html += `<div class="be-item-picker">
+        <input class="be-picker-search" type="text" placeholder="Search items…"
+          value="${esc(_itemPickerSearch)}" oninput="filterItems(this.value)">
+        <div class="be-picker-tabs">${tabBtns}</div>
+        <div class="be-picker-grid" id="be-picker-grid">${buildPickerGridHTML()}</div>
+      </div>`;
+    }
+    return html;
+  }
+
+  // ── Full edit-mode block HTML ──────────────────────────────────────────────
+  const editBlockHTML = _buildEditing ? `
+    <div class="build-block has-override">
+      <div class="build-block-hdr">
+        <div class="guide-section-title">Runes &amp; Build — Edit</div>
+        <button class="build-edit-btn active" onclick="cancelBuildEdit()">✕ Cancel</button>
+      </div>
+
+      <div class="be-section">
+        <div class="be-section-label">Runes</div>
+        ${buildRuneEditorHTML(build)}
+      </div>
+
+      <div class="be-sep"></div>
+
+      <div class="be-section">
+        <div class="be-section-label">Summoner Spells</div>
+        ${buildSpellEditorHTML(build)}
+      </div>
+
+      <div class="be-sep"></div>
+
+      <div class="be-section">
+        <div class="be-section-label">Items</div>
+        ${buildItemPhaseHTML(build)}
+      </div>
+
+      <div class="edit-actions">
+        <button class="ea-btn ea-save"   onclick="saveBuildEdit()">✓ Save</button>
+        <button class="ea-btn ea-cancel" onclick="cancelBuildEdit()">Cancel</button>
+        <button class="ea-btn ea-reset"  onclick="resetBuildEdit()">↺ Reset to default</button>
+      </div>
+    </div>` : null;
+
+  // ── View-mode block HTML ───────────────────────────────────────────────────
+  function buildViewHTML(b) {
+    // Runes row
+    const primaryTree = findTree(b.runes.primaryTreeId);
+    const secondaryTree = findTree(b.runes.secondaryTreeId);
+    const runeIcons = (ids, cls) => ids.filter(Boolean).map(id => {
+      const r = findRune(id);
+      if (!r) return '';
+      return `<div class="bw" data-tip="${esc(r.name)}"><img class="bi ${cls}" src="${runeUrl(r.icon)}" alt="${esc(r.name)}" onerror="this.parentElement.style.display='none'"></div>`;
+    }).join('');
+
+    const ptIcon = primaryTree ? `<div class="bw" data-tip="${esc(primaryTree.name)}"><img class="bv-tree" src="${runeUrl(primaryTree.icon)}" alt="${esc(primaryTree.name)}" onerror="this.parentElement.style.display='none'"></div>` : '';
+    const stIcon = secondaryTree ? `<div class="bw" data-tip="${esc(secondaryTree.name)}"><img class="bv-tree" src="${runeUrl(secondaryTree.icon)}" alt="${esc(secondaryTree.name)}" onerror="this.parentElement.style.display='none'"></div>` : '';
+    const keystoneHtml = b.runes.slots[0] ? runeIcons([b.runes.slots[0]], 'keystone') : '';
+    const primaryRestHtml = runeIcons(b.runes.slots.slice(1), 'rune-sm');
+    const secondaryHtml = runeIcons(b.runes.secondary, 'rune-sm');
+
+    // Shards
+    const shardIcons = (b.runes.shards || []).map((id, rowIdx) => {
+      const shardRow = SHARD_ROWS[rowIdx];
+      const shard = shardRow ? shardRow.find(s => s.id === id) : null;
+      if (!shard) return '';
+      return `<div class="bw" data-tip="${esc(shard.name)}"><img class="bi rune-sm" src="https://ddragon.leagueoflegends.com/cdn/img/${shard.path}" alt="${esc(shard.name)}" onerror="this.parentElement.style.display='none'"></div>`;
+    }).join('');
+
+    // Spells
+    const spellIcons = (b.spells || []).filter(Boolean).map(key => {
+      const sp = findSpell(key);
+      const name = sp ? sp.name : key;
+      return `<div class="bw" data-tip="${esc(name)}"><img class="bi summ" src="${spellUrl(key)}" alt="${esc(name)}" onerror="this.parentElement.style.display='none'"></div>`;
+    }).join('');
+
+    // Items
+    const itemRowHTML = (ids, sep='›') => ids.filter(Boolean).map((id, i) =>
+      `<div class="bw" data-tip="${esc(itemName(id))}"><img class="bi item" src="${itemUrl(id)}" alt="${esc(itemName(id))}" onerror="this.parentElement.style.display='none'"></div>`
+      + (i < ids.length - 1 ? `<span class="b-arrow">${sep}</span>` : '')
+    ).join('');
+    const lastRowHTML = (ids) => ids.filter(Boolean).map((id, i) =>
+      `<div class="bw" data-tip="${esc(itemName(id))}"><img class="bi item" src="${itemUrl(id)}" alt="${esc(itemName(id))}" onerror="this.parentElement.style.display='none'"></div>`
+      + (i < ids.length - 1 ? `<span class="b-or">or</span>` : '')
+    ).join('');
+
+    return `
+      <div class="build-row">
+        <span class="build-label">Runes</span>
+        <div class="build-icons">
+          ${ptIcon}${keystoneHtml}${primaryRestHtml}
+          <div class="b-divider"></div>
+          ${stIcon}${secondaryHtml}
+          <div class="b-divider"></div>
+          ${shardIcons}
+        </div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Spells</span>
+        <div class="build-icons">${spellIcons}</div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Start</span>
+        <div class="build-icons">${itemRowHTML(b.items.start, '+')}</div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Early</span>
+        <div class="build-icons">${itemRowHTML(b.items.early)}</div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Core</span>
+        <div class="build-icons">${itemRowHTML(b.items.core)}</div>
+      </div>
+      <div class="build-row">
+        <span class="build-label">Last Item</span>
+        <div class="build-icons">${lastRowHTML(b.items.last)}</div>
+      </div>`;
+  }
+
+  const buildBlockHTML = editBlockHTML || `
+    <div class="build-block ${hasOverride ? 'has-override' : ''}">
+      <div class="build-block-hdr">
+        <div class="guide-section-title">Runes &amp; Build</div>
+        <button class="build-edit-btn" onclick="startBuildEdit()">✎ Edit</button>
+      </div>
+      ${buildViewHTML(build)}
+    </div>`;
+
+  // ── Tips bullets ────────────────────────────────────────────────────────────
+  const tipsBullets = matchup.tips.split(/(?<=[.!?])\s+(?=[A-Z])/).map(s => `<li>${s.replace(/\.$/, '')}</li>`).join('');
+  const avoidBullets = matchup.avoid.split(/(?<=[.!?])\s+(?=[A-Z"'DN])/).map(s => `<li>${s.replace(/\.$/, '')}</li>`).join('');
+
+  // Videos
+  let videosHTML = '';
+  if (matchup.videos && matchup.videos.length) {
+    const links = matchup.videos.map((url, i) =>
+      `<a class="video-btn" href="${url}" target="_blank" rel="noopener">▶ Watch Guide ${matchup.videos.length > 1 ? i+1 : ''}</a>`
+    ).join('');
+    videosHTML = `
+      <div>
+        <div class="guide-section-title">Video Guides</div>
+        <div class="video-links">${links}</div>
+      </div>`;
+  }
+
+  body.innerHTML = `
+    <div class="diff-row">
+      <span class="diff-label">Difficulty</span>
+      <div class="diff-bar">${diffDisplay}</div>
+    </div>
+    ${buildBlockHTML}
+    <div class="guide-sections">
+      <div>
+        <div class="guide-section-title">Strategy</div>
+        <div class="guide-section-content"><ul>${tipsBullets}</ul></div>
+      </div>
+      <div>
+        <div class="guide-section-title">What NOT To Do</div>
+        <div class="guide-section-content avoid-content"><ul>${avoidBullets}</ul></div>
+      </div>
+      ${videosHTML}
+    </div>`;
+
+  panel.classList.remove('hidden');
+}
+
+function diffInfo(diff) {
+  if (diff === null)    return { cls: 'prog',  label: 'In Progress' };
+  if (diff <= 4)        return { cls: 'easy',  label: 'Favorable'   };
+  if (diff <= 6)        return { cls: 'even',  label: 'Manageable'  };
+  if (diff <= 8)        return { cls: 'hard',  label: 'Hard'        };
+  return                       { cls: 'vhard', label: 'Very Hard'   };
+}
+
+// Guide toggle collapse
+document.getElementById('guide-header').addEventListener('click', () => {
+  S.guideOpen = !S.guideOpen;
+  document.getElementById('guide-toggle').classList.toggle('collapsed', !S.guideOpen);
+  document.getElementById('guide-body').style.display = S.guideOpen ? 'block' : 'none';
+});
+
+// ─────────────────────────────────────────────────────────
+// GLOBAL EVENT LISTENERS
+// ─────────────────────────────────────────────────────────
+document.getElementById('level-down').addEventListener('click', () => {
+  if (S.champLevel <= 1) return;
+  S.champLevel--;
+  if (!S.manual) S.skills = autoDistribute(S.champLevel, S.champ.name);
+  render();
+});
+
+document.getElementById('level-up').addEventListener('click', () => {
+  if (S.champLevel >= 18) return;
+  S.champLevel++;
+  if (!S.manual) S.skills = autoDistribute(S.champLevel, S.champ.name);
+  render();
+});
+
+document.getElementById('haste-input').addEventListener('input', () => {
+  S.haste = Math.max(0, parseInt(document.getElementById('haste-input').value) || 0);
+  const cdr = cdrPct(S.haste);
+  const badge = document.getElementById('cdr-badge');
+  badge.textContent = cdr > 0 ? `${cdr}% CDR` : '0% CDR';
+  badge.classList.toggle('zero', +cdr === 0);
+  renderAbilities();
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  S.manual = false;
+  S.skills = autoDistribute(S.champLevel, S.champ.name);
+  render();
+});
+
+// ─────────────────────────────────────────────────────────
+// UTIL
+// ─────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 6000);
+}
+
+function esc(s) { return s.replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+// ─────────────────────────────────────────────────────────
+// START
+// ─────────────────────────────────────────────────────────
+init();
+</script>
+
+
+</body></html>
