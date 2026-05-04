@@ -597,7 +597,7 @@
           <img id="guide-main-icon" class="guide-main-icon" src="https://ddragon.leagueoflegends.com/cdn/16.9.1/img/champion/Kayle.png" alt="">
           <div>
             <div class="guide-header-title" id="guide-header-title">Kayle (Mid) vs Yasuo</div>
-            <div class="guide-header-sub" id="guide-header-sub">Matchup Guide — from your friend's spreadsheet</div>
+            <div class="guide-header-sub" id="guide-header-sub">Matchup Guide</div>
           </div>
         </div>
         <div class="guide-toggle-btn" id="guide-toggle">▼</div>
@@ -4242,7 +4242,7 @@ function renderGuidePanel() {
     `https://ddragon.leagueoflegends.com/cdn/${S.version}/img/champion/${guide.champId}.png`;
   document.getElementById('guide-header-title').textContent =
     `${S.mainChamp} (${guide.role}) vs ${S.champ.name}`;
-  document.getElementById('guide-header-sub').textContent = 'Matchup Guide — from your friend\'s spreadsheet';
+  document.getElementById('guide-header-sub').textContent = 'Matchup Guide';
   document.getElementById('guide-toggle').classList.toggle('collapsed', !S.guideOpen);
 
   // Body
