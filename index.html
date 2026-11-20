@@ -3861,11 +3861,50 @@ function autoDistribute(level, champName) {
 // ─────────────────────────────────────────────────────────
 // COOLDOWN MATH
 // ─────────────────────────────────────────────────────────
+// Cooldown corrections from the League of Legends Wiki (checked 2026-11-19, Data Dragon 16.23.1).
+// Data Dragon reports 0 / placeholder values for these, and for ammo abilities it gives the
+// short delay between charges instead of the charge recharge time.
+const CD_FIXES = {
+  // Wrong or missing in Data Dragon
+  'Kalista':      { E: [10, 9.5, 9, 8.5, 8], W: { cd: [90, 80, 70, 60, 50], note: 'per charge' } },
+  'Karthus':      { Q: [1, 1, 1, 1, 1] },
+  'Rakan':        { E: [20, 18, 16, 14, 12] },
+  'Rengar':       { Q: [6, 5.5, 5, 4.5, 4], W: [16, 14.5, 13, 11.5, 10], E: [10, 10, 10, 10, 10] },
+  'Singed':       { Q: [1, 1, 1, 1, 1] },
+  'Tahm Kench':   { R: [120, 100, 80] },
+  'Talon':        { E: [2, 2, 2, 2, 2] },
+  'Veigar':       { W: [8, 8, 8, 8, 8] },
+  // Ammo abilities: charge recharge time
+  'Amumu':        { Q: { cd: [16, 15, 14, 13, 12], note: 'per charge' } },
+  'Ashe':         { E: { cd: [90, 80, 70, 60, 50], note: 'per charge' } },
+  'Azir':         { W: { cd: [12, 10.5, 9, 7.5, 6], note: 'per charge' } },
+  'Bard':         { W: { cd: [18, 18, 18, 18, 18], note: 'per charge' } },
+  'Caitlyn':      { W: { cd: [26, 22, 18, 14, 10], note: 'per charge' } },
+  'Corki':        { R: { cd: [20, 20, 20], note: 'per charge' } },
+  'Gangplank':    { E: { cd: [17, 16, 15, 14, 13], note: 'per charge' } },
+  'Heimerdinger': { Q: { cd: [20, 20, 20, 20, 20], note: 'per charge' } },
+  'Ivern':        { W: { cd: [20, 20, 20, 20, 20], note: 'per charge' } },
+  'Jhin':         { E: { cd: [24, 21.5, 19, 16.5, 14], note: 'per charge' } },
+  'Milio':        { E: { cd: [17, 16, 15, 14, 13], note: 'per charge' } },
+  'Nilah':        { E: { cd: [26, 22.5, 19, 15.5, 12], note: 'per charge' } },
+  'Rumble':       { E: { cd: [6, 6, 6, 6, 6], note: 'per charge' } },
+  'Taric':        { Q: { cd: [15, 15, 15, 15, 15], note: 'per charge' } },
+  'Teemo':        { R: { cd: [35, 30, 25], note: 'per charge' } },
+  "Vel'Koz":      { W: { cd: [19, 18, 17, 16, 15], note: 'per charge' } },
+  'Vi':           { E: { cd: [12, 11, 10, 9, 8], note: 'per charge' } },
+  'Zyra':         { W: { cd: [16, 14.5, 13, 11.5, 10], note: 'per charge' } },
+};
+function cdFix(champName, key) {
+  const f = (CD_FIXES[champName] || {})[key];
+  if (!f) return null;
+  return Array.isArray(f) ? { cd: f, note: '' } : f;
+}
+
 function effectiveCd(base, haste) { return haste > 0 ? base * 100 / (100 + haste) : base; }
 function cdrPct(haste) { return haste > 0 ? (haste / (100 + haste) * 100).toFixed(1) : 0; }
 function fmtCd(s) {
-  if (s === 0) return '0';
-  if (s < 60) return (+s.toFixed(1)).toString();
+  if (s === 0) return '0s';
+  if (s < 60) return (+s.toFixed(1)).toString() + 's';
   return `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}`;
 }
 
@@ -3928,7 +3967,8 @@ function cardHTML({ key, data, isPassive, lv }) {
   if (isPassive) {
     body = `<div class="passive-note">Passive — no cooldown</div>`;
   } else {
-    const cds = data.cooldown || [];
+    const fix = cdFix(S.champ.name, key);
+    const cds = fix ? fix.cd : (data.cooldown || []);
     const max = key === 'R' ? 3 : 5;
     const dots = Array.from({length: max}, (_,i) =>
       `<div class="dot ${i < lv ? 'filled' : ''}"></div>`).join('');
@@ -3938,16 +3978,19 @@ function cardHTML({ key, data, isPassive, lv }) {
       cds.forEach((base, i) => {
         const val   = fmtCd(effectiveCd(base, S.haste));
         const isCur = i === lv - 1;
-        ranksHTML += `<span class="cd-rank ${isCur ? 'current' + (S.haste > 0 ? ' with-haste' : '') : ''}">${val}s</span>`;
+        ranksHTML += `<span class="cd-rank ${isCur ? 'current' + (S.haste > 0 ? ' with-haste' : '') : ''}">${val}</span>`;
         if (i < cds.length - 1) ranksHTML += `<span class="cd-arrow">›</span>`;
       });
       ranksHTML += '</div>';
+      if (fix && fix.note) {
+        ranksHTML += `<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">Recharge time ${fix.note}</div>`;
+      }
       if (S.haste > 0 && lv > 0) {
         const base = cds[Math.min(lv-1, cds.length-1)];
         const eff  = effectiveCd(base, S.haste);
         ranksHTML += `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:3px;">
-          Base at rank ${lv}: <b style="color:var(--text)">${fmtCd(base)}s</b>
-          &nbsp;→&nbsp; Effective: <b style="color:var(--blue)">${fmtCd(eff)}s</b>
+          Base at rank ${lv}: <b style="color:var(--text)">${fmtCd(base)}</b>
+          &nbsp;→&nbsp; Effective: <b style="color:var(--blue)">${fmtCd(eff)}</b>
           &nbsp;(${cdrPct(S.haste)}% CDR)
         </div>`;
       }
