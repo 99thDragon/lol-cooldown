@@ -3823,15 +3823,17 @@ async function pickChamp(id, name) {
   }
 }
 
+const START_LEVEL = 6; // champions open at level 6 so the max-first ability and ult are visible
+
 function _applyChamp(champObj) {
   S.champ      = champObj;
-  S.champLevel = 1;
+  S.champLevel = START_LEVEL;
   S.haste      = 0;
   S.manual     = false;
   _buildEditing = false;
   _buildDraft   = null;
   _activeItemSlot = null;
-  S.skills     = autoDistribute(1, S.champ.name);
+  S.skills     = autoDistribute(START_LEVEL, S.champ.name);
   document.getElementById('haste-input').value = 0;
   document.getElementById('loading-msg').classList.add('hidden');
   render();
